@@ -19,7 +19,8 @@ def conectar_a_servidor_A():
     respuesta = s.recv(1024).decode()
     print(f"[B] Respuesta de autenticación: {respuesta}")
 
-    if "exitosa" not in respuesta.lower():
+    # CORREGIDO: verificamos si contiene "successful"
+    if "successful" not in respuesta.lower():
         print("[B] Autenticación fallida. Cerrando conexión.")
         s.close()
         return None
