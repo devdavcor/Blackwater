@@ -2,7 +2,7 @@ import socket
 import threading
 
 class Branch_Server:
-    def __init__(self, server_a_ip, server_a_port, listen_port=11000):
+    def __init__(self, server_a_ip, server_a_port, listen_port=11005):
         self.server_a_ip = server_a_ip
         self.server_a_port = server_a_port
         self.listen_port = listen_port

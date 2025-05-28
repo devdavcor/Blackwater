@@ -84,18 +84,18 @@ class Central_Server:
             return False
 
     # Método para manejar peticiones del cliente
-    def handle_client(self, conn, addr) :
-        print ( f"[+] Client connected from: {addr}" )
-        try :
-            conn.sendall ( b"Authentication required (user|password):\n" )
-            data = conn.recv ( 1024 ).decode ().strip ()
+    def handle_client(self, conn, addr):
+        print(f"[+] Client connected from: {addr}")
+        try:
+            conn.sendall(b"Authentication required (user|password):\n")
+            data = conn.recv(1024).decode().strip()
 
-            if '|' not in data :
-                conn.sendall ( b"Invalid format. Disconnecting.\n" )
-                conn.close ()
+            if '|' not in data:
+                conn.sendall(b"Invalid format. Disconnecting.\n")
+                conn.close()
                 return
 
-            user_input, password_input = data.split ( '|', 1 )
+            user_input, password_input = data.split('|', 1)
 
             if not self.validate_credentials ( user_input, password_input ) :
                 conn.sendall ( b"Invalid credentials or user already connected. Disconnecting.\n" )
@@ -103,139 +103,65 @@ class Central_Server:
                 return
 
             with self.clients_lock :
-                self.connected_users.add ( user_input )
+                self.connected_users.add ( user_input )  # Marcar usuario como conectado
 
-            conn.sendall ( b"Authentication successful. Welcome.\n" )
+            conn.sendall(b"Authentication successful. Welcome.\n")
             request_number = 1
 
-            while True :
-                data = conn.recv ( 1024 )
-                if not data :
+            while True:
+                data = conn.recv(1024)
+                if not data:
                     break
 
-                message = data.decode ().strip ()
-                print ( f"[{addr}] Request {request_number}: {message}" )
+                message = data.decode().strip()
+                print(f"[{addr}] Request {request_number}: {message}")
                 request_number += 1
 
-                parts = message.split ( '|' )
-                command = parts[0].upper ()
+                # Convertir comando a mayúsculas para comparación, pero conservar argumento original para USER
+                command = message.split('|')[0].upper()
 
-                try :
-                    if command == "HELLO" :
-                        response = "Hello client 👋"
-
-                    elif command == "TIME" :
-                        response = f"Current time: {datetime.now ().strftime ( '%H:%M:%S' )}"
-
-                    elif command == "USER" and len ( parts ) == 2 :
-                        user = self.find_user_by_number ( parts[1].strip () )
-                        response = f"User {parts[1].strip ()} is: {user}" if user else f"User {parts[1].strip ()} not found"
-
-                    elif command == "NEW_USER" and len ( parts ) == 4 :
+                if command == "HELLO":
+                    response = "Hello client 👋"
+                elif command == "TIME":
+                    response = f"Current time: {datetime.now().strftime('%H:%M:%S')}"
+                elif command == "USER":
+                    parts = message.split('|')
+                    if len(parts) == 2:
+                        user = self.find_user_by_number(parts[1].strip())
+                        if user:
+                            response = f"User {parts[1].strip()} is: {user}"
+                        else:
+                            response = f"User {parts[1].strip()} not found"
+                    else:
+                        response = "Incorrect format for USER. Use: USER|number"
+                elif command == "NEW_USER":
+                    parts = message.split('|')
+                    if len(parts) == 4:
                         new_data = {
-                            "name" : parts[1].strip (),
-                            "last_name" : parts[2].strip (),
-                            "curp" : parts[3].strip ()
+                            "name" : parts[1].strip(),
+                            "last_name" : parts[2].strip(),
+                            "curp" : parts[3].strip()
                         }
-                        response = f"Resultado {self.new_user ( new_data )}"
+                        register = self.new_user(new_data)
+                        response = (f"Resultado {register}")
+                elif command == "EXIT":
+                    response = "Goodbye 👋"
+                    conn.sendall(response.encode())
+                    break
+                else:
+                    response = f"Unknown command: {message}"
 
-                    elif command == "CHANGE_NAME" and len ( parts ) == 3 :
-                        response = self.change_name ( parts[1].strip (), parts[2].strip () )
+                conn.sendall(response.encode())
 
-                    elif command == "CHANGE_LAST_NAME" and len ( parts ) == 3 :
-                        response = self.change_last_name ( parts[1].strip (), parts[2].strip () )
-
-                    elif command == "CHANGE_CURP" and len ( parts ) == 3 :
-                        response = self.change_curp ( parts[1].strip (), parts[2].strip () )
-
-                    elif command == "UPDATE_BALANCE" and len ( parts ) == 3 :
-                        response = self.update_balance ( parts[1].strip (), float ( parts[2].strip () ) )
-
-                    elif command == "UPDATE_BIOMETRICS" and len ( parts ) == 3 :
-                        response = self.update_biometrics ( parts[1].strip (), parts[2].strip () )
-
-                    elif command == "CHANGE_PASSWORD" and len ( parts ) == 4 :
-                        response = self.change_password ( parts[1].strip (), parts[2].strip () )
-
-                    elif command == "WITHDRAW_CASH" and len ( parts ) == 3 :
-                        response = self.withdraw_cash ( parts[1].strip (), float ( parts[2].strip () ) )
-
-                    elif command == "DEPOSIT_CASH" and len ( parts ) == 3 :
-                        response = self.deposit_balance ( parts[1].strip (), float ( parts[2].strip () ) )
-
-                    elif command == "CHECK_BALANCE" and len ( parts ) == 2 :
-                        balance = self.check_balance ( parts[1].strip () )
-                        response = f"Balance: {balance}" if balance is not None else "User not found"
-
-                    elif command == "DELETE_USER" and len ( parts ) == 2 :
-                        response = self.delete_user ( parts[1].strip () )
-
-                    elif command == "SEARCH_USER" and len ( parts ) == 2 :
-                        response = self.search_user ( parts[1].strip () )
-
-                    elif command == "GET_BIOMETRICS" and len ( parts ) == 2 :
-                        response = self.get_biometrics ( parts[1].strip () )
-
-                    # Branch operations
-                    elif command == "NEW_BRANCH" and len ( parts ) == 3 :
-                        response = self.new_branch ( parts[1].strip () )
-
-                    elif command == "CHANGE_NAME_BRANCH" and len ( parts ) == 3 :
-                        response = self.change_branch_name ( parts[1].strip (), parts[2].strip () )
-
-                    elif command == "CHANGE_LAST_NAME_BRANCH" and len ( parts ) == 3 :
-                        response = self.change_branch_last_name ( parts[1].strip (), parts[2].strip () )
-
-                    elif command == "CHANGE_PASSWORD_BRANCH" and len ( parts ) == 4 :
-                        response = self.change_branch_password ( parts[1].strip (), parts[2].strip () )
-
-                    elif command == "DELETE_BRANCH" and len ( parts ) == 2 :
-                        response = self.delete_branch ( parts[1].strip () )
-
-                    elif command == "SEARCH_BRANCH" and len ( parts ) == 2 :
-                        response = self.search_branch ( parts[1].strip () )
-
-                    # ATM operations
-                    elif command == "NEW_ATM" and len ( parts ) == 3 :
-                        response = self.new_atm ( parts[1].strip () )
-
-                    elif command == "CHANGE_NAME_ATM" and len ( parts ) == 3 :
-                        response = self.change_atm_name ( parts[1].strip (), parts[2].strip () )
-
-                    elif command == "CHANGE_LAST_NAME_ATM" and len ( parts ) == 3 :
-                        response = self.change_atm_last_name ( parts[1].strip (), parts[2].strip () )
-
-                    elif command == "CHANGE_PASSWORD_ATM" and len ( parts ) == 4 :
-                        response = self.change_atm_password ( parts[1].strip (), parts[2].strip () )
-
-                    elif command == "DELETE_ATM" and len ( parts ) == 2 :
-                        response = self.delete_atm ( parts[1].strip () )
-
-                    elif command == "SEARCH_ATM" and len ( parts ) == 2 :
-                        response = self.search_atm ( parts[1].strip () )
-
-                    elif command == "EXIT" :
-                        response = "Goodbye 👋"
-                        conn.sendall ( response.encode () )
-                        break
-
-                    else :
-                        response = f"Unknown or malformed command: {message}"
-
-                except Exception as cmd_err :
-                    response = f"[ERROR] Processing command: {cmd_err}"
-
-                conn.sendall ( response.encode () )
-
-        except Exception as e :
-            print ( f"[ERROR] With client {addr}: {e}" )
-        finally :
-            conn.close ()
+        except Exception as e:
+            print(f"[ERROR] With client {addr}: {e}")
+        finally:
+            conn.close()
             with self.clients_lock :
                 self.clients_active -= 1
                 self.clients_connections = [c for c in self.clients_connections if c[1] != addr]
-                self.connected_users.discard ( user_input )
-            print ( f"[-] Client {addr} disconnected" )
+                self.connected_users.discard ( user_input )  # Quitar usuario de conectados
+            print(f"[-] Client {addr} disconnected")
 
     # Método para aceptar y validar conexiones
     def accept_connections(self):
