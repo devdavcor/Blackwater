@@ -4,25 +4,17 @@ import os
 
 def new_user(curp, name, last_name):
     try:
-        # Ruta base
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        blackwater_root = os.path.abspath(os.path.join(base_path, "..", "..", ".."))
-        db_path = os.path.join(blackwater_root, "Central_Server", "Resources", "DB")
-
-        # Rutas de los archivos Parquet
-        users_data_path = os.path.join(db_path, 'users_data.parquet')
-        users_balance_path = os.path.join(db_path, 'users_balance.parquet')
-        users_biometrics_path = os.path.join(db_path, 'users_biometrics.parquet')
-        users_path = os.path.join(db_path, 'users.parquet')
+        # Obtener rutas
+        paths = _get_db_paths()
 
         # Cargar DataFrames
-        users_data_df = pd.read_parquet(users_data_path)
-        users_balance_df = pd.read_parquet(users_balance_path)
-        users_biometrics_df = pd.read_parquet(users_biometrics_path)
+        users_data_df = pd.read_parquet(paths['users_data'])
+        users_balance_df = pd.read_parquet(paths['users_balance'])
+        users_biometrics_df = pd.read_parquet(paths['users_biometrics'])
 
-        # Cargar o crear users_df para users.parquet
-        if os.path.exists(users_path):
-            users_df = pd.read_parquet(users_path)
+        # Cargar o crear users_df
+        if os.path.exists(paths['users']):
+            users_df = pd.read_parquet(paths['users'])
         else:
             users_df = pd.DataFrame(columns=['user', 'password'])
 
@@ -31,46 +23,39 @@ def new_user(curp, name, last_name):
             print("⚠️ El CURP ya existe. No se registró.")
             return False
 
-        # Número de usuario nuevo
-        user_number = len(users_data_df)+1
+        # Crear nuevo usuario
+        user_number = len(users_data_df) + 1
         user_code = f"U{user_number:04d}{name[0].upper()}{last_name[0].upper()}"
 
-        # Agregar nuevo registro a users_data_df
-        new_user_data = pd.DataFrame([{
+        # Actualizar todos los DataFrames
+        users_data_df = pd.concat([users_data_df, pd.DataFrame([{
             'user': user_code,
             'curp': curp,
             'name': name,
             'last_name': last_name,
             'number': user_number
-        }])
-        users_data_df = pd.concat([users_data_df, new_user_data], ignore_index=True)
+        }])], ignore_index=True)
 
-        # Agregar nuevo registro a users_balance_df
-        new_balance = pd.DataFrame([{
+        users_balance_df = pd.concat([users_balance_df, pd.DataFrame([{
             'user': user_code,
             'balance': 0.0
-        }])
-        users_balance_df = pd.concat([users_balance_df, new_balance], ignore_index=True)
+        }])], ignore_index=True)
 
-        # Agregar nuevo registro a users_biometrics_df
-        new_biometrics = pd.DataFrame([{
+        users_biometrics_df = pd.concat([users_biometrics_df, pd.DataFrame([{
             'user': user_code,
             'biometrics': np.zeros(128).tolist()
-        }])
-        users_biometrics_df = pd.concat([users_biometrics_df, new_biometrics], ignore_index=True)
+        }])], ignore_index=True)
 
-        # Agregar nuevo registro a users_df (users.parquet)
-        new_user = pd.DataFrame([{
+        users_df = pd.concat([users_df, pd.DataFrame([{
             'user': user_code,
             'password': "000000"
-        }])
-        users_df = pd.concat([users_df, new_user], ignore_index=True)
+        }])], ignore_index=True)
 
         # Guardar cambios
-        users_data_df.to_parquet(users_data_path, index=False)
-        users_balance_df.to_parquet(users_balance_path, index=False)
-        users_biometrics_df.to_parquet(users_biometrics_path, index=False)
-        users_df.to_parquet(users_path, index=False)
+        users_data_df.to_parquet(paths['users_data'], index=False)
+        users_balance_df.to_parquet(paths['users_balance'], index=False)
+        users_biometrics_df.to_parquet(paths['users_biometrics'], index=False)
+        users_df.to_parquet(paths['users'], index=False)
 
         print(f"✅ Usuario '{user_code}' registrado correctamente con número {user_number}.")
         return True
@@ -79,56 +64,22 @@ def new_user(curp, name, last_name):
         print(f"❌ Error al registrar el usuario: {e}")
         return False
 
-import os
-import pandas as pd
 
 def delete_user(user_code):
     try:
-        # Ruta base
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        blackwater_root = os.path.abspath(os.path.join(base_path, "..", "..", ".."))
-        db_path = os.path.join(blackwater_root, "Central_Server", "Resources", "DB")
-
-        # Rutas de los archivos Parquet
-        users_data_path = os.path.join(db_path, 'users_data.parquet')
-        users_balance_path = os.path.join(db_path, 'users_balance.parquet')
-        users_biometrics_path = os.path.join(db_path, 'users_biometrics.parquet')
-        users_path = os.path.join(db_path, 'users.parquet')
-
-        # Variable para controlar si el usuario existe en algún archivo
+        # Obtener rutas
+        paths = _get_db_paths()
         user_found = False
 
-        # Procesar users_data.parquet
-        if os.path.exists(users_data_path):
-            users_data_df = pd.read_parquet(users_data_path)
-            if user_code in users_data_df['user'].values:
-                user_found = True
-                users_data_df = users_data_df[users_data_df['user'] != user_code]
-                users_data_df.to_parquet(users_data_path, index=False)
-
-        # Procesar users_balance.parquet
-        if os.path.exists(users_balance_path):
-            users_balance_df = pd.read_parquet(users_balance_path)
-            if user_code in users_balance_df['user'].values:
-                user_found = True
-                users_balance_df = users_balance_df[users_balance_df['user'] != user_code]
-                users_balance_df.to_parquet(users_balance_path, index=False)
-
-        # Procesar users_biometrics.parquet
-        if os.path.exists(users_biometrics_path):
-            users_biometrics_df = pd.read_parquet(users_biometrics_path)
-            if user_code in users_biometrics_df['user'].values:
-                user_found = True
-                users_biometrics_df = users_biometrics_df[users_biometrics_df['user'] != user_code]
-                users_biometrics_df.to_parquet(users_biometrics_path, index=False)
-
-        # Procesar users.parquet
-        if os.path.exists(users_path):
-            users_df = pd.read_parquet(users_path)
-            if user_code in users_df['user'].values:
-                user_found = True
-                users_df = users_df[users_df['user'] != user_code]
-                users_df.to_parquet(users_path, index=False)
+        # Procesar cada archivo
+        for key in ['users_data', 'users_balance', 'users_biometrics', 'users']:
+            path = paths[key]
+            if os.path.exists(path):
+                df = pd.read_parquet(path)
+                if user_code in df['user'].values:
+                    user_found = True
+                    df = df[df['user'] != user_code]
+                    df.to_parquet(path, index=False)
 
         if user_found:
             print(f"🗑️ Usuario '{user_code}' eliminado correctamente de todos los registros existentes.")
@@ -139,9 +90,6 @@ def delete_user(user_code):
         print(f"❌ Error al eliminar el usuario: {e}")
 
 
-import os
-import pandas as pd
-
 def _get_db_paths():
     base_path = os.path.dirname(os.path.abspath(__file__))
     blackwater_root = os.path.abspath(os.path.join(base_path, "..", "..", ".."))
@@ -149,8 +97,10 @@ def _get_db_paths():
     return {
         "users_data": os.path.join(db_path, 'users_data.parquet'),
         "users_balance": os.path.join(db_path, 'users_balance.parquet'),
+        "users_biometrics": os.path.join(db_path, 'users_biometrics.parquet'),
         "users": os.path.join(db_path, 'users.parquet'),
     }
+
 
 def change_name(user_code, new_name):
     paths = _get_db_paths()
@@ -192,7 +142,6 @@ def change_curp(user_code, new_curp):
     df.to_parquet(paths['users_data'], index=False)
     print(f"✅ CURP cambiado a '{new_curp}' para usuario '{user_code}'.")
     return True
-
 
 def change_password(user_code, new_password):
     paths = _get_db_paths()
@@ -270,9 +219,6 @@ def print_parquet(path, name):
     else:
         print(f"\n⚠️ Archivo {name} no encontrado en {path}")
 
-import os
-import pandas as pd
-
 def _get_admin_path():
     base_path = os.path.dirname(os.path.abspath(__file__))
     blackwater_root = os.path.abspath(os.path.join(base_path, "..", "..", ".."))
@@ -314,8 +260,6 @@ def new_administrator(name, last_name, password="000000"):
     except Exception as e:
         print(f"❌ Error al crear administrador: {e}")
         return False
-
-
 
 def change_password_admin(user_code, new_password):
     try:
@@ -585,10 +529,10 @@ if __name__ == "__main__" :
     delete_administrator("A0010MJ")               # Eliminar admin
     '''
     #new_branch ( "Michael", "Jordan" )  # Creará algo como B0001MJ con password default "000000"
-    change_password_branch ( "B0009MJ", "newpass" )  # Cambiar contraseña
-    change_branch_name ( "B0009MJ", "Ronaldo" )  # Cambiar nombre
-    change_branch_last_name ( "B0009MJ", "Dos Santos" )  # Cambiar apellido
-
+    #change_password_branch ( "B0009MJ", "newpass" )  # Cambiar contraseña
+    #change_branch_name ( "B0009MJ", "Ronaldo" )  # Cambiar nombre
+    #change_branch_last_name ( "B0009MJ", "Dos Santos" )  # Cambiar apellido
+    delete_user('U0008MJ')
 
 
 
