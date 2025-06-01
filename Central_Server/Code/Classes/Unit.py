@@ -550,3 +550,87 @@ def get_biometrics(user_code):
     except Exception as e:
         print(f"❌ Error al obtener la biometría del usuario: {e}")
         return None
+
+def update_branch_data(user_code, new_name=None, new_last_name=None, new_password=None):
+    if not user_code or user_code.strip() == "":
+        print("⚠️ Código de usuario vacío. No se realiza ninguna acción.")
+        return False
+
+    try:
+        branch_path = _get_branch_path()
+
+        if not os.path.exists(branch_path):
+            print("⚠️ Archivo de sucursales no existe.")
+            return False
+
+        branches_df = pd.read_parquet(branch_path)
+
+        if user_code not in branches_df['user'].values:
+            print(f"⚠️ Sucursal '{user_code}' no encontrada.")
+            return False
+
+        updated = False
+
+        if new_name is not None and new_name.strip() != "":
+            branches_df.loc[branches_df['user'] == user_code, 'name'] = new_name
+            print(f"✅ Nombre actualizado para '{user_code}'.")
+            updated = True
+
+        if new_last_name is not None and new_last_name.strip() != "":
+            branches_df.loc[branches_df['user'] == user_code, 'last_name'] = new_last_name
+            print(f"✅ Apellido actualizado para '{user_code}'.")
+            updated = True
+
+        if new_password is not None and new_password.strip() != "":
+            branches_df.loc[branches_df['user'] == user_code, 'password'] = new_password
+            print(f"✅ Contraseña actualizada para '{user_code}'.")
+            updated = True
+
+        if updated:
+            branches_df.to_parquet(branch_path, index=False)
+            return True
+        else:
+            print("ℹ️ No se proporcionaron nuevos datos para actualizar.")
+            return False
+
+    except Exception as e:
+        print(f"❌ Error al actualizar los datos de la sucursal: {e}")
+        return False
+
+def update_admin_data(user_code, new_name="", new_last_name="", new_password=""):
+    if not user_code:
+        print("⚠️ Usuario vacío. No se puede actualizar.")
+        return False
+
+    try:
+        admin_path = _get_admin_path()
+
+        if not os.path.exists(admin_path):
+            print("⚠️ Archivo de administradores no existe.")
+            return False
+
+        admins_df = pd.read_parquet(admin_path)
+
+        if user_code not in admins_df['user'].values:
+            print(f"⚠️ Administrador '{user_code}' no encontrado.")
+            return False
+
+        if new_name:
+            admins_df.loc[admins_df['user'] == user_code, 'name'] = new_name
+            print(f"✅ Nombre actualizado para '{user_code}'.")
+
+        if new_last_name:
+            admins_df.loc[admins_df['user'] == user_code, 'last_name'] = new_last_name
+            print(f"✅ Apellido actualizado para '{user_code}'.")
+
+        if new_password:
+            admins_df.loc[admins_df['user'] == user_code, 'password'] = new_password
+            print(f"✅ Contraseña actualizada para '{user_code}'.")
+
+        admins_df.to_parquet(admin_path, index=False)
+        return True
+
+    except Exception as e:
+        print(f"❌ Error al actualizar datos del administrador: {e}")
+        return False
+

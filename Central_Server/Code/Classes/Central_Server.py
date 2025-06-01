@@ -4,7 +4,7 @@ import pandas as pd
 import os
 from datetime import datetime
 import ast
-from Unit import *
+from .Unit import *
 
 class Central_Server:
     def __init__(self, host='0.0.0.0', port=10000, max_clients=3):
@@ -298,11 +298,9 @@ class Central_Server:
             self.clients_active = 0
 
     # Método para reiniciar el servidor con nuevas configuraciones
-    def settings_server(self, new_host=None, new_port=None, new_max_clients=None):
+    def settings_server(self, new_port=None, new_max_clients=None):
         print("Restarting server with new settings...")
         self.stop_server()
-        if new_host:
-            self.host = new_host
         if new_port:
             self.port = new_port
         if new_max_clients:
