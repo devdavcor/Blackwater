@@ -64,7 +64,6 @@ def new_user(curp, name, last_name):
         print(f"❌ Error al registrar el usuario: {e}")
         return False
 
-
 def delete_user(user_code):
     try:
         # Obtener rutas
@@ -89,7 +88,6 @@ def delete_user(user_code):
     except Exception as e:
         print(f"❌ Error al eliminar el usuario: {e}")
 
-
 def _get_db_paths():
     base_path = os.path.dirname(os.path.abspath(__file__))
     blackwater_root = os.path.abspath(os.path.join(base_path, "..", "..", ".."))
@@ -100,7 +98,6 @@ def _get_db_paths():
         "users_biometrics": os.path.join(db_path, 'users_biometrics.parquet'),
         "users": os.path.join(db_path, 'users.parquet'),
     }
-
 
 def change_name(user_code, new_name):
     paths = _get_db_paths()
@@ -154,7 +151,7 @@ def change_password(user_code, new_password):
     print(f"✅ Password cambiado para usuario '{user_code}'.")
     return True
 
-def withdraw_balance(user_code, amount):
+def withdraw_cash(user_code, amount):
     paths = _get_db_paths()
     df = pd.read_parquet(paths['users_balance'])
     if user_code not in df['user'].values:
@@ -170,7 +167,7 @@ def withdraw_balance(user_code, amount):
     print(f"✅ Se retiraron {amount} del balance del usuario '{user_code}'. Nuevo saldo: {current_balance - amount}")
     return True
 
-def deposit_balance(user_code, amount):
+def deposit_cash(user_code, amount):
     paths = _get_db_paths()
     df = pd.read_parquet(paths['users_balance'])
     if user_code not in df['user'].values:
@@ -285,7 +282,6 @@ def change_password_admin(user_code, new_password):
         print(f"❌ Error al cambiar password del administrador: {e}")
         return False
 
-
 def delete_administrator(user_code):
     try:
         admin_path = _get_admin_path()
@@ -363,7 +359,6 @@ def _get_branch_path():
     blackwater_root = os.path.abspath(os.path.join(base_path, "..", "..", ".."))
     db_path = os.path.join(blackwater_root, "Central_Server", "Resources", "DB")
     return os.path.join(db_path, 'branches.parquet')
-
 
 def new_branch(name, last_name, password="000000"):
     try:
@@ -495,48 +490,63 @@ def change_branch_last_name(user_code, new_last_name):
         print(f"❌ Error al cambiar el apellido de la sucursal: {e}")
         return False
 
+def update_biometrics(user_code, vector):
+    try:
+        # Obtener rutas
+        paths = _get_db_paths()
+        biometrics_path = paths['users_biometrics']
 
+        # Verificar que el archivo exista
+        if os.path.exists(biometrics_path):
+            df = pd.read_parquet(biometrics_path)
+        else:
+            df = pd.DataFrame(columns=['user', 'biometrics'])
 
-if __name__ == "__main__" :
-    '''
-    curp = "MCRJ850712HDFLNS09"
-    name = "Marco"
-    last_name = "Jiménez"
+        # Verificar si el usuario ya tiene biometría registrada
+        if user_code in df['user'].values:
+            df.loc[df['user'] == user_code, 'biometrics'] = [vector]
+            print(f"✅ Biometría actualizada para el usuario '{user_code}'.")
+        else:
+            new_row = pd.DataFrame([{
+                'user': user_code,
+                'biometrics': vector
+            }])
+            df = pd.concat([df, new_row], ignore_index=True)
+            print(f"✅ Biometría guardada para el nuevo usuario '{user_code}'.")
 
-    # Cambiar nombre
-    change_name ( "U0008MJ", "Marcos" )
+        # Guardar DataFrame actualizado
+        df.to_parquet(biometrics_path, index=False)
+        return True
 
-    # Cambiar apellido
-    change_last_name ( "U0008MJ", "Nava" )
+    except Exception as e:
+        print(f"❌ Error al guardar la biometría del usuario: {e}")
+        return False
 
-    # Cambiar CURP
-    change_curp ( "U0008MJ", "CRZL900101HDFABC02" )
+def get_biometrics(user_code):
+    try:
+        # Obtener rutas
+        paths = _get_db_paths()
+        biometrics_path = paths['users_biometrics']
 
-    # Cambiar password
-    change_password ( "U0008MJ", "nuevo_pass123" )
+        # Verificar que el archivo exista
+        if not os.path.exists(biometrics_path):
+            print("⚠️ No existe el archivo de biometría.")
+            return None
 
-    # Depositar saldo
-    deposit_balance ( "U0008MJ", 500.50 )
+        # Cargar archivo
+        df = pd.read_parquet(biometrics_path)
 
-    # Retirar saldo
-    withdraw_balance ( "U0008MJ", 200.0 )
-    '''
-    '''
-    new_administrator("Michael", "Jordan")       # Creará algo como A0001MJ con password default "000000"
-    change_password_admin("A0009MJ", "newpass")  # Cambiar contraseña
-    change_admin_name("A0009MJ", "Ronaldo")
-    change_admin_last_name("A0009MJ", "Dos Santos")
-    delete_administrator("A0010MJ")               # Eliminar admin
-    '''
-    #new_branch ( "Michael", "Jordan" )  # Creará algo como B0001MJ con password default "000000"
-    #change_password_branch ( "B0009MJ", "newpass" )  # Cambiar contraseña
-    #change_branch_name ( "B0009MJ", "Ronaldo" )  # Cambiar nombre
-    #change_branch_last_name ( "B0009MJ", "Dos Santos" )  # Cambiar apellido
-    delete_user('U0008MJ')
+        # Buscar al usuario
+        user_row = df[df['user'] == user_code]
 
+        if not user_row.empty:
+            biometrics = user_row.iloc[0]['biometrics']
+            print(f"✅ Biometría encontrada para el usuario '{user_code}'.")
+            return biometrics
+        else:
+            print(f"⚠️ No se encontró biometría para el usuario '{user_code}'.")
+            return None
 
-
-
-
-
-
+    except Exception as e:
+        print(f"❌ Error al obtener la biometría del usuario: {e}")
+        return None

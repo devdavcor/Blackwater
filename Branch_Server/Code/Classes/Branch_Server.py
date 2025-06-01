@@ -87,6 +87,35 @@ class Branch_Server:
             # Wait for sender thread to finish before exiting
             sender_thread.join()
 
+    def new_branch(self, name, last_name, password="000000"):
+        message = f"NEW_BRANCH|{name}|{last_name}|{password}"
+        return self.send_command_to_a(message)
+
+    def change_branch_name(self, user_code, new_name):
+        message = f"CHANGE_NAME_BRANCH|{user_code}|{new_name}"
+        return self.send_command_to_a(message)
+
+    def change_branch_last_name(self, user_code, new_last_name):
+        message = f"CHANGE_LAST_NAME_BRANCH|{user_code}|{new_last_name}"
+        return self.send_command_to_a(message)
+
+    def change_password_branch(self, user_code, new_password):
+        message = f"CHANGE_PASSWORD_BRANCH|{user_code}|{new_password}"
+        return self.send_command_to_a(message)
+
+    def delete_branch(self, user_code):
+        message = f"DELETE_BRANCH|{user_code}"
+        return self.send_command_to_a(message)
+
+    def send_command_to_a(self, message):
+        try:
+            self.conn_a.sendall(message.encode())
+            response = self.conn_a.recv(1024).decode()
+            print(f"[B] Response from A: {response}")
+            return response
+        except Exception as e:
+            print(f"[B] Error sending command to A: {e}")
+            return f"ERROR|{str(e)}"
 
 if __name__ == "__main__":
     ip_a = "127.0.0.1"

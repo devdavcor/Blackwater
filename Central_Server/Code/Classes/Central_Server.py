@@ -3,6 +3,8 @@ import threading
 import pandas as pd
 import os
 from datetime import datetime
+import ast
+from Unit import *
 
 class Central_Server:
     def __init__(self, host='0.0.0.0', port=10000, max_clients=3):
@@ -124,100 +126,111 @@ class Central_Server:
                     if command == "HELLO" :
                         response = "Hello client 👋"
 
-                    elif command == "TIME" :
-                        response = f"Current time: {datetime.now ().strftime ( '%H:%M:%S' )}"
-
-                    elif command == "USER" and len ( parts ) == 2 :
-                        user = self.find_user_by_number ( parts[1].strip () )
-                        response = f"User {parts[1].strip ()} is: {user}" if user else f"User {parts[1].strip ()} not found"
-
                     elif command == "NEW_USER" and len ( parts ) == 4 :
-                        new_data = {
-                            "name" : parts[1].strip (),
-                            "last_name" : parts[2].strip (),
-                            "curp" : parts[3].strip ()
-                        }
-                        response = f"Resultado {self.new_user ( new_data )}"
+                        name = parts[1].strip ()
+                        last_name = parts[2].strip ()
+                        curp = parts[3].strip ()
+                        result = new_user ( curp, name, last_name )  # 👈 aquí en orden correcto
+                        response = f"NEW_USER|{name}|{last_name}|{result}"
 
                     elif command == "CHANGE_NAME" and len ( parts ) == 3 :
-                        response = self.change_name ( parts[1].strip (), parts[2].strip () )
+                        user_code = parts[1].strip ()
+                        new_name = parts[2].strip ()
+                        result = change_name ( user_code, new_name )
+                        response = f"CHANGE_NAME|{user_code}|{new_name}|{result}"
 
                     elif command == "CHANGE_LAST_NAME" and len ( parts ) == 3 :
-                        response = self.change_last_name ( parts[1].strip (), parts[2].strip () )
+                        user_code = parts[1].strip ()
+                        new_lastname = parts[2].strip ()
+                        result = change_last_name ( user_code, new_lastname )
+                        response = f"CHANGE_LAST_NAME|{user_code}|{new_lastname}|{result}"
 
                     elif command == "CHANGE_CURP" and len ( parts ) == 3 :
-                        response = self.change_curp ( parts[1].strip (), parts[2].strip () )
+                        user_code = parts[1].strip ()
+                        new_curp = parts[2].strip ()
+                        result = change_curp ( user_code, new_curp )
+                        response = f"CHANGE_CURP|{user_code}|{new_curp}|{result}"
 
-                    elif command == "UPDATE_BALANCE" and len ( parts ) == 3 :
-                        response = self.update_balance ( parts[1].strip (), float ( parts[2].strip () ) )
 
                     elif command == "UPDATE_BIOMETRICS" and len ( parts ) == 3 :
-                        response = self.update_biometrics ( parts[1].strip (), parts[2].strip () )
+                        user_code = parts[1].strip ()
+                        vector_str = parts[2].strip ()
+                        try :
+                            vector = ast.literal_eval (vector_str)  # Convierte '[0.1, 0.2, 0.3]' a lista real
+                            result = update_biometrics ( user_code, vector )
+                            response = f"UPDATE_BIOMETRICS|{user_code}|{result}"
+                        except Exception as e :
+                            print ( f"❌ Error al interpretar el vector biométrico: {e}" )
+                            response = False
 
-                    elif command == "CHANGE_PASSWORD" and len ( parts ) == 4 :
-                        response = self.change_password ( parts[1].strip (), parts[2].strip () )
+                    elif command == "CHANGE_PASSWORD" and len ( parts ) == 3 :
+                        user_code = parts[1].strip ()
+                        new_password = parts[2].strip ()
+                        result = change_password ( user_code, new_password )
+                        response = f"CHANGE_PASSWORD|{user_code}|{result}"
 
                     elif command == "WITHDRAW_CASH" and len ( parts ) == 3 :
-                        response = self.withdraw_cash ( parts[1].strip (), float ( parts[2].strip () ) )
+                        user_code = parts[1].strip ()
+                        amount = float ( parts[2].strip () )
+                        result = withdraw_cash ( user_code, amount )
+                        response = f"WITHDRAW_CASH|{user_code}|{result}"
 
                     elif command == "DEPOSIT_CASH" and len ( parts ) == 3 :
-                        response = self.deposit_balance ( parts[1].strip (), float ( parts[2].strip () ) )
+                        user_code = parts[1].strip ()
+                        amount = float ( parts[2].strip () )
+                        result = deposit_cash ( user_code, amount )
+                        response = f"DEPOSIT_CASH|{user_code}|{result}"
 
                     elif command == "CHECK_BALANCE" and len ( parts ) == 2 :
-                        balance = self.check_balance ( parts[1].strip () )
-                        response = f"Balance: {balance}" if balance is not None else "User not found"
+                        user_code = parts[1].strip ()
+                        result = check_balance ( user_code )
+                        response = f"CHECK_BALANCE|{user_code}|{result}"
 
                     elif command == "DELETE_USER" and len ( parts ) == 2 :
-                        response = self.delete_user ( parts[1].strip () )
+                        user_code = parts[1].strip ()
+                        result = delete_user ( user_code )
+                        response = f"DELETE_USER|{user_code}|{result}"
 
                     elif command == "SEARCH_USER" and len ( parts ) == 2 :
-                        response = self.search_user ( parts[1].strip () )
+                        curp = parts[1].strip ()
+                        result = get_user_by_curp ( curp )
+                        response = f"SEARCH_USER|{curp}|{result}"
 
                     elif command == "GET_BIOMETRICS" and len ( parts ) == 2 :
-                        response = self.get_biometrics ( parts[1].strip () )
+                        user = parts[1].strip ()
+                        result = get_biometrics ( parts[1].strip () )
+                        response = f"GET_BIOMETRICS|{user}|{result}"
 
                     # Branch operations
-                    elif command == "NEW_BRANCH" and len ( parts ) == 3 :
-                        response = self.new_branch ( parts[1].strip () )
+                    elif command == "NEW_BRANCH" and len ( parts ) in [3, 4] :
+                        name = parts[1].strip ()
+                        last_name = parts[2].strip ()
+                        password = parts[3].strip () if len ( parts ) == 4 else "000000"
+                        result = new_branch ( name, last_name, password )
+                        response = f"NEW_BRANCH|{name}|{last_name}|{result}"
 
                     elif command == "CHANGE_NAME_BRANCH" and len ( parts ) == 3 :
-                        response = self.change_branch_name ( parts[1].strip (), parts[2].strip () )
+                        user_code = parts[1].strip ()
+                        new_name = parts[2].strip ()
+                        result = change_branch_name ( user_code, new_name )
+                        response = f"CHANGE_NAME_BRANCH|{user_code}|{result}"
 
                     elif command == "CHANGE_LAST_NAME_BRANCH" and len ( parts ) == 3 :
-                        response = self.change_branch_last_name ( parts[1].strip (), parts[2].strip () )
+                        user_code = parts[1].strip ()
+                        new_last_name = parts[2].strip ()
+                        result = change_branch_last_name ( user_code, new_last_name )
+                        response = f"CHANGE_LAST_NAME_BRANCH|{user_code}|{result}"
 
                     elif command == "CHANGE_PASSWORD_BRANCH" and len ( parts ) == 4 :
-                        response = self.change_branch_password ( parts[1].strip (), parts[2].strip () )
+                        user_code = parts[1].strip ()
+                        new_password = parts[2].strip ()
+                        result = change_password_branch ( user_code, new_password )
+                        response = f"CHANGE_PASSWORD_BRANCH|{user_code}|{result}"
 
                     elif command == "DELETE_BRANCH" and len ( parts ) == 2 :
-                        response = self.delete_branch ( parts[1].strip () )
-
-                    elif command == "SEARCH_BRANCH" and len ( parts ) == 2 :
-                        response = self.search_branch ( parts[1].strip () )
-
-                    # ATM operations
-                    elif command == "NEW_ATM" and len ( parts ) == 3 :
-                        response = self.new_atm ( parts[1].strip () )
-
-                    elif command == "CHANGE_NAME_ATM" and len ( parts ) == 3 :
-                        response = self.change_atm_name ( parts[1].strip (), parts[2].strip () )
-
-                    elif command == "CHANGE_LAST_NAME_ATM" and len ( parts ) == 3 :
-                        response = self.change_atm_last_name ( parts[1].strip (), parts[2].strip () )
-
-                    elif command == "CHANGE_PASSWORD_ATM" and len ( parts ) == 4 :
-                        response = self.change_atm_password ( parts[1].strip (), parts[2].strip () )
-
-                    elif command == "DELETE_ATM" and len ( parts ) == 2 :
-                        response = self.delete_atm ( parts[1].strip () )
-
-                    elif command == "SEARCH_ATM" and len ( parts ) == 2 :
-                        response = self.search_atm ( parts[1].strip () )
-
-                    elif command == "EXIT" :
-                        response = "Goodbye 👋"
-                        conn.sendall ( response.encode () )
-                        break
+                        user_code = parts[1].strip ()
+                        result = delete_branch ( user_code )
+                        response = f"DELETE_BRANCH|{user_code}|{result}"
 
                     else :
                         response = f"Unknown or malformed command: {message}"
@@ -321,66 +334,6 @@ class Central_Server:
         return clients_list
 
     '''------------------------------------------------------------------------'''
-
-    def new_user(self, user_info) :
-        try :
-            # Leer los archivos actualizados
-            self.users_df = pd.read_parquet ( self.users_path )
-            self.users_data_df = pd.read_parquet ( self.users_data_path )
-            self.users_balance_df = pd.read_parquet ( self.users_balance_path )
-
-            # Validación de CURP
-            if user_info['curp'] in self.users_data_df['curp'].values :
-                print ( f"❌ CURP ya registrado: {user_info['curp']}" )
-                return "CURP ya registrado"
-
-            # Crear nuevo número de cuenta
-            new_number = self.users_data_df['number'].max () + 1 if not self.users_data_df.empty else 1
-            initials = (user_info['name'][0] + user_info['last_name'][0]).upper ()
-            user_code = f"U{new_number:04d}{initials}"
-
-            if user_code in self.users_df['user'].values :
-                print ( f"❌ El usuario generado ya existe: {user_code}" )
-                return "Usuario ya existe"
-
-            # Filas a agregar
-            new_user_row = {
-                "user" : user_code,
-                "password" : "000000"  # Contraseña por defecto (puedes cambiar esto)
-            }
-
-            new_user_data_row = {
-                "name" : user_info['name'],
-                "last_name" : user_info['last_name'],
-                "curp" : user_info['curp'],
-                "user" : user_code,
-                "number" : new_number
-            }
-
-            new_user_balance_row = {
-                "user" : user_code,
-                "balance" : 0.0
-            }
-
-            # Agregar a los DataFrames
-            self.users_df = pd.concat ( [self.users_df, pd.DataFrame ( [new_user_row] )], ignore_index=True )
-            self.users_data_df = pd.concat ( [self.users_data_df, pd.DataFrame ( [new_user_data_row] )],
-                                             ignore_index=True )
-            self.users_balance_df = pd.concat ( [self.users_balance_df, pd.DataFrame ( [new_user_balance_row] )],
-                                                ignore_index=True )
-
-            # Guardar los cambios
-            self.users_df.to_parquet ( self.users_path, index=False )
-            self.users_data_df.to_parquet ( self.users_data_path, index=False )
-            self.users_balance_df.to_parquet ( self.users_balance_path, index=False )
-
-            print ( f"✅ Usuario {user_code} creado exitosamente." )
-            return f"Usuario creado: {user_code}"
-
-        except Exception as e :
-            print ( f"[ERROR] Creando nuevo usuario: {e}" )
-            return "Error al crear usuario"
-
 
 if __name__ == "__main__":
     server = Central_Server()
