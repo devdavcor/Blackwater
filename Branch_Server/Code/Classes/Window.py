@@ -40,12 +40,12 @@ class Window:
         self.create_popup_window()
 
         self.create_label(
-            text="Corona Banking Central Server",  # El texto a mostrar
+            text="Corona Banking Branch Server",  # El texto a mostrar
             row=3,  # Fila en la que estará
             column=0,  # Columna en la que estará
             columnspan=20,  # Cuántas columnas ocupará
             rowspan=1,  # Cuántas filas ocupará
-            bg="#195959",  # Color de fondo
+            bg="#bf0413",  # Color de fondo
             fg="white",  # Color de texto
             font=("Arial", 18, "bold")  # Tipo y tamaño de fuente
         )

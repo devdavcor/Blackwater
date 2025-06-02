@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import os
 
-def new_user(curp, name, last_name):
+def new_user(name, last_name, curp):
     try:
         # Obtener rutas
         paths = _get_db_paths()

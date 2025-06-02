@@ -16,8 +16,6 @@ class Branch_Server:
         self.conn_a = None
         self.stop_event = threading.Event ()
         self.server_running = False  # asegura que el estado sea consistente
-        self.clients_connections = []
-        self.clients_lock = threading.Lock ()
 
     def connect_to_server_a(self, user, password):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -40,6 +38,24 @@ class Branch_Server:
 
         return s
 
+    def handle_client_c(self, conn_c, conn_a):
+        try:
+            while True:
+                data = conn_c.recv(1024)
+                if not data:
+                    break
+                print(f"[B] Received from C: {data.decode()}")
+                conn_a.sendall(data)
+
+                response = conn_a.recv(1024)
+                print(f"[B] Response from A: {response.decode()}")
+                conn_c.sendall(response)
+        except Exception as e:
+            print(f"[B] Communication error: {e}")
+        finally:
+            conn_c.close()
+            self.stop_event.set()  # Stop sending messages if client disconnects
+
     def listen_for_client_c(self) :
         with socket.socket ( socket.AF_INET, socket.SOCK_STREAM ) as server :
             server.bind ( ('0.0.0.0', self.listen_port) )
@@ -56,17 +72,8 @@ class Branch_Server:
                     conn_c, addr = server.accept ()
                     print ( f"[B] Client C connected: {addr}" )
 
-                    with self.clients_lock :
-                        self.clients_connections.append ( {
-                            'conn' : conn_c,
-                            'address' : addr
-                        } )
-
-                    client_thread = threading.Thread (
-                        target=self.handle_client_c,
-                        args=(conn_c, self.conn_a),
-                        daemon=True
-                    )
+                    client_thread = threading.Thread ( target=self.handle_client_c, args=(conn_c, self.conn_a),
+                                                       daemon=True )
                     client_thread.start ()
 
                     connections_handled += 1
@@ -76,35 +83,6 @@ class Branch_Server:
                     break
 
             print ( f"[B] Reached max client connections ({self.max_connections}). No longer accepting new clients." )
-
-    def remove_client_connection(self, conn_to_remove) :
-        with self.clients_lock :
-            for client in self.clients_connections :
-                if client['conn'] == conn_to_remove :
-                    self.clients_connections.remove ( client )
-                    print ( f"[B] Removed client {client['address']} from active connections." )
-                    break
-
-    def handle_client_c(self, conn_c, conn_a) :
-        try :
-            while True :
-                data = conn_c.recv ( 1024 )
-                if not data :
-                    break
-                print ( f"[B] Received from C: {data.decode ()}" )
-                conn_a.sendall ( data )
-
-                response = conn_a.recv ( 1024 )
-                print ( f"[B] Response from A: {response.decode ()}" )
-                conn_c.sendall ( response )
-
-        except Exception as e :
-            print ( f"[B] Communication error: {e}" )
-
-        finally :
-            conn_c.close ()
-            self.remove_client_connection ( conn_c )  # Quitar la conexión cuando termina
-            #self.stop_event.set ()  # Si quieres que parar todo cuando uno se desconecta
 
     def send_messages_to_a(self):
         """Thread method to send manual messages to server A."""
