@@ -216,7 +216,7 @@ def open_menu_window():
         font=("Arial", 14)
     )
 
-
+    '''
     server_app_menu.create_button (
         text="Prueba identidad",
         command=validate_face,
@@ -240,7 +240,7 @@ def open_menu_window():
         fg="#0D2626",
         font=("Arial", 14)
     )
-
+    '''
     server_app_menu.create_button (
         text="Log Out",
         command=logout,

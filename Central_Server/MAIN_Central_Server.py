@@ -85,7 +85,7 @@ def update_branch_button(user, name, last_name, password):
         messagebox.showinfo ( "Update Branch", f"Error. Retry." )
 
 def update_admin_button_def(user, name, last_name, password):
-    result = update_branch_data(user, name, last_name, password)
+    result = update_admin_data(user, name, last_name, password)
     if result == True:
         messagebox.showinfo ( "Update Admin", f"Admin updated." )
     elif result == False:
@@ -1288,7 +1288,7 @@ def open_menu_window():
         fg="#0D2626",
         font=("Arial", 14)
     )
-
+    '''
     server_app_menu.create_button (
         text="Logs",
         command=logs,  # Llama a la función "logs"
@@ -1300,7 +1300,7 @@ def open_menu_window():
         fg="#0D2626",
         font=("Arial", 14)
     )
-
+    '''
     server_app_menu.create_button (
         text="Log Out",
         command=logout,  # Llama a la función logout
