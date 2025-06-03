@@ -89,174 +89,6 @@ class Central_Server:
         except Exception as e :
             print ( f"[ERROR] Validating credentials: {e}" )
             return False
-    '''
-    # Método para manejar peticiones del cliente
-    def handle_client(self, conn, addr) :
-        print ( f"[+] Client connected from: {addr}" )
-        try :
-            conn.sendall ( b"Authentication required (user|password):\n" )
-            data = conn.recv ( 1024 ).decode ().strip ()
-
-            if '|' not in data :
-                conn.sendall ( b"Invalid format. Disconnecting.\n" )
-                conn.close ()
-                return
-
-            user_input, password_input = data.split ( '|', 1 )
-
-            if not self.validate_credentials ( user_input, password_input ) :
-                conn.sendall ( b"Invalid credentials or user already connected. Disconnecting.\n" )
-                conn.close ()
-                return
-
-            with self.clients_lock :
-                self.connected_users.add ( user_input )
-
-            conn.sendall ( b"Authentication successful. Welcome.\n" )
-            request_number = 1
-
-            while True :
-                data = conn.recv ( 1024 )
-                if not data :
-                    break
-
-                message = data.decode ().strip ()
-                print ( f"[{addr}] Request {request_number}: {message}" )
-                request_number += 1
-
-                parts = message.split ( '|' )
-                command = parts[0].upper ()
-
-                try :
-                    if command == "HELLO" :
-                        response = "Hello client 👋"
-
-                    elif command == "NEW_USER" and len ( parts ) == 4 :
-                        name = parts[1].strip ()
-                        last_name = parts[2].strip ()
-                        curp = parts[3].strip ()
-                        result = new_user ( curp, name, last_name )  # 👈 aquí en orden correcto
-                        response = f"NEW_USER|{name}|{last_name}|{result}"
-
-                    elif command == "CHANGE_NAME" and len ( parts ) == 3 :
-                        user_code = parts[1].strip ()
-                        new_name = parts[2].strip ()
-                        result = change_name ( user_code, new_name )
-                        response = f"CHANGE_NAME|{user_code}|{new_name}|{result}"
-
-                    elif command == "CHANGE_LAST_NAME" and len ( parts ) == 3 :
-                        user_code = parts[1].strip ()
-                        new_lastname = parts[2].strip ()
-                        result = change_last_name ( user_code, new_lastname )
-                        response = f"CHANGE_LAST_NAME|{user_code}|{new_lastname}|{result}"
-
-                    elif command == "CHANGE_CURP" and len ( parts ) == 3 :
-                        user_code = parts[1].strip ()
-                        new_curp = parts[2].strip ()
-                        result = change_curp ( user_code, new_curp )
-                        response = f"CHANGE_CURP|{user_code}|{new_curp}|{result}"
-
-
-                    elif command == "UPDATE_BIOMETRICS" and len ( parts ) == 3 :
-                        user_code = parts[1].strip ()
-                        vector_str = parts[2].strip ()
-                        try :
-                            vector = ast.literal_eval (vector_str)  # Convierte '[0.1, 0.2, 0.3]' a lista real
-                            result = update_biometrics ( user_code, vector )
-                            response = f"UPDATE_BIOMETRICS|{user_code}|{result}"
-                        except Exception as e :
-                            print ( f"❌ Error al interpretar el vector biométrico: {e}" )
-                            response = False
-
-                    elif command == "CHANGE_PASSWORD" and len ( parts ) == 3 :
-                        user_code = parts[1].strip ()
-                        new_password = parts[2].strip ()
-                        result = change_password ( user_code, new_password )
-                        response = f"CHANGE_PASSWORD|{user_code}|{result}"
-
-                    elif command == "WITHDRAW_CASH" and len ( parts ) == 3 :
-                        user_code = parts[1].strip ()
-                        amount = float ( parts[2].strip () )
-                        result = withdraw_cash ( user_code, amount )
-                        response = f"WITHDRAW_CASH|{user_code}|{result}"
-
-                    elif command == "DEPOSIT_CASH" and len ( parts ) == 3 :
-                        user_code = parts[1].strip ()
-                        amount = float ( parts[2].strip () )
-                        result = deposit_cash ( user_code, amount )
-                        response = f"DEPOSIT_CASH|{user_code}|{result}"
-
-                    elif command == "CHECK_BALANCE" and len ( parts ) == 2 :
-                        user_code = parts[1].strip ()
-                        result = check_balance ( user_code )
-                        response = f"CHECK_BALANCE|{user_code}|{result}"
-
-                    elif command == "DELETE_USER" and len ( parts ) == 2 :
-                        user_code = parts[1].strip ()
-                        result = delete_user ( user_code )
-                        response = f"DELETE_USER|{user_code}|{result}"
-
-                    elif command == "SEARCH_USER" and len ( parts ) == 2 :
-                        curp = parts[1].strip ()
-                        result = get_user_by_curp ( curp )
-                        response = f"SEARCH_USER|{curp}|{result}"
-
-                    elif command == "GET_BIOMETRICS" and len ( parts ) == 2 :
-                        user = parts[1].strip ()
-                        result = get_biometrics ( parts[1].strip () )
-                        response = f"GET_BIOMETRICS|{user}|{result}"
-
-                    # Branch operations
-                    elif command == "NEW_BRANCH" and len ( parts ) in [3, 4] :
-                        name = parts[1].strip ()
-                        last_name = parts[2].strip ()
-                        password = parts[3].strip () if len ( parts ) == 4 else "000000"
-                        result = new_branch ( name, last_name, password )
-                        response = f"NEW_BRANCH|{name}|{last_name}|{result}"
-
-                    elif command == "CHANGE_NAME_BRANCH" and len ( parts ) == 3 :
-                        user_code = parts[1].strip ()
-                        new_name = parts[2].strip ()
-                        result = change_branch_name ( user_code, new_name )
-                        response = f"CHANGE_NAME_BRANCH|{user_code}|{result}"
-
-                    elif command == "CHANGE_LAST_NAME_BRANCH" and len ( parts ) == 3 :
-                        user_code = parts[1].strip ()
-                        new_last_name = parts[2].strip ()
-                        result = change_branch_last_name ( user_code, new_last_name )
-                        response = f"CHANGE_LAST_NAME_BRANCH|{user_code}|{result}"
-
-                    elif command == "CHANGE_PASSWORD_BRANCH" and len ( parts ) == 4 :
-                        user_code = parts[1].strip ()
-                        new_password = parts[2].strip ()
-                        result = change_password_branch ( user_code, new_password )
-                        response = f"CHANGE_PASSWORD_BRANCH|{user_code}|{result}"
-
-                    elif command == "DELETE_BRANCH" and len ( parts ) == 2 :
-                        user_code = parts[1].strip ()
-                        result = delete_branch ( user_code )
-                        response = f"DELETE_BRANCH|{user_code}|{result}"
-
-                    else :
-                        response = f"Unknown or malformed command: {message}"
-
-                except Exception as cmd_err :
-                    response = f"[ERROR] Processing command: {cmd_err}"
-
-                conn.sendall ( response.encode () )
-
-        except Exception as e :
-            print ( f"[ERROR] With client {addr}: {e}" )
-        finally :
-            conn.close ()
-            with self.clients_lock :
-                self.clients_active -= 1
-                self.clients_connections = [c for c in self.clients_connections if c[1] != addr]
-                self.connected_users.discard ( user_input )
-            print ( f"[-] Client {addr} disconnected" )
-
-            conn.sendall ( response.encode () )
-    '''
 
     def handle_client(self, conn, addr) :
         print ( f"[+] Client connected from: {addr}" )
@@ -264,7 +96,7 @@ class Central_Server:
 
         try :
             conn.sendall ( b"Authentication required (user|password):\n" )
-            data = conn.recv ( 1024 ).decode ().strip ()
+            data = conn.recv ( 32768 ).decode ().strip ()
 
             if '|' not in data :
                 conn.sendall ( b"Invalid format. Disconnecting.\n" )
@@ -283,7 +115,7 @@ class Central_Server:
             request_number = 1
 
             while True :
-                data = conn.recv ( 1024 )
+                data = conn.recv ( 32768 )
                 if not data :
                     break
 
@@ -452,12 +284,13 @@ class Central_Server:
     def start_server(self) :
         if hasattr ( self, 'server_running' ) and self.server_running :
             print ( "Servidor ya está en ejecución. No se iniciará de nuevo." )
-            return
+            return False
 
         print ( "Starting server..." )
         self.server_running = True
         accept_thread = threading.Thread ( target=self.accept_connections, daemon=True )
         accept_thread.start ()
+        return True
 
     # Método para detener el servidor
     def stop_server(self):
@@ -466,6 +299,7 @@ class Central_Server:
         self.running = False
         if self.server_socket:
             self.server_socket.close()
+            return True
         with self.clients_lock:
             for conn, addr in self.clients_connections:
                 try:
@@ -475,6 +309,7 @@ class Central_Server:
                     pass
             self.clients_connections.clear()
             self.clients_active = 0
+        return True
 
     # Método para reiniciar el servidor con nuevas configuraciones
     def settings_server(self, new_port=None, new_max_clients=None):
@@ -485,6 +320,7 @@ class Central_Server:
         if new_max_clients:
             self.max_clients = new_max_clients
         self.start_server()
+        return True
 
     # Método para desconectar clientes manualmente por dirección
     def disconnect_client(self, addr):
@@ -497,6 +333,7 @@ class Central_Server:
                         print(f"Client {addr} disconnected manually.")
                     except Exception as e:
                         print(f"[ERROR] Disconnecting client {addr}: {e}")
+                        return False
                     self.clients_connections = [c for c in self.clients_connections if c[1] != addr]
                     self.clients_active -= 1
                     return True

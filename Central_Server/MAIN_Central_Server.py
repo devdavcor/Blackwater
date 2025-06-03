@@ -39,6 +39,80 @@ def start_server():
     main_window.withdraw ()
     start_menu_window ()
 
+def start_server_button():
+    result = central_server.start_server()
+    if result == False:
+        messagebox.showinfo ( "Start Server", f"Sever is already running." )
+    if result == True:
+        messagebox.showinfo ( "Start Server", f"Sever is running." )
+    print("Start Server")
+
+def restart_server_button(port, branches):
+    result = central_server.settings_server(int(port), int(branches))
+    if result == False:
+        messagebox.showinfo ( "Restart Server", f"Sever is already running." )
+    elif result == True:
+        messagebox.showinfo ( "Restart Server", f"Sever is running." )
+    print("Start Server")
+
+def stop_server_button():
+    result = central_server.stop_server()
+    if result == True:
+        messagebox.showinfo ( "Stop Server", f"Sever is not running." )
+    print("Start Server")
+
+def disconnect_branch_button(user):
+    result = central_server.disconnect_branch(user)
+    if result == True:
+        messagebox.showinfo ( "Discconect Branch", f"Branch disconnected." )
+    elif result == False:
+        messagebox.showinfo ( "Discconect Branch", f"Error. Retry." )
+    print("Start Server")
+
+def new_branch_button_def(name, last_name):
+    result =new_branch(name, last_name)
+    print(result)
+    if result == False:
+        messagebox.showinfo ( "New User", f"Error. Retry." )
+    else:
+        messagebox.showinfo ( "New User", f"User created {result}." )
+
+def update_branch_button(user, name, last_name, password):
+    result = update_branch_data(user, name, last_name, password)
+    if result == True:
+        messagebox.showinfo ( "Update Branch", f"Branch updated." )
+    elif result == False:
+        messagebox.showinfo ( "Update Branch", f"Error. Retry." )
+
+def update_admin_button_def(user, name, last_name, password):
+    result = update_branch_data(user, name, last_name, password)
+    if result == True:
+        messagebox.showinfo ( "Update Admin", f"Admin updated." )
+    elif result == False:
+        messagebox.showinfo ( "Update Admin", f"Error. Retry." )
+
+def delete_branch_button_def(user):
+    result = delete_branch (user)
+    if result == True :
+        messagebox.showinfo ( "Delete Branch", f"Delete." )
+    elif result == False :
+        messagebox.showinfo ( "Delete Branch", f"Error. Retry." )
+
+def new_administrator_button_def(name, last_name):
+    result = new_administrator(name, last_name)
+    if result == True:
+        messagebox.showinfo ( "New Administrator", f"Administrator created." )
+    else:
+        messagebox.showinfo ( "New Administrator", f"Error. Retry." )
+
+def delete_administrator_button_def(user):
+    result = delete_administrator(user)
+    if result == True:
+        messagebox.showinfo ( "Delete Administrator", f"Delete." )
+    elif result == False:
+        messagebox.showinfo ( "Delete Administrator", f"Error. Retry." )
+
+
 def start_menu_window():
     # Crear una nueva ventana Toplevel para el menú
     menu_window = tk.Toplevel(main_window)
@@ -55,7 +129,7 @@ def start_menu_window():
     )
     server_app_menu.create_button(
         text="Start Server",
-        command=central_server.start_server,
+        command=start_server_button,
         row=12,
         column=8,
         columnspan=4,
@@ -106,7 +180,7 @@ def stop_server():
 
     server_app_menu.create_button(
         text="Stop Server",
-        command=central_server.stop_server,
+        command=stop_server_button,
         row=12,
         column=8,
         columnspan=4,
@@ -176,7 +250,7 @@ def settings():
     # Espacio para el botón
     server_app_menu.create_button(
         text="Reset Server",
-        command=lambda: central_server.settings_server(int(server_app_menu.port.get()), int(server_app_menu.branches.get())),
+        command=lambda: restart_server_button(int(server_app_menu.port.get()), int(server_app_menu.branches.get())),
         row=15,
         column=8,
         columnspan=4,
@@ -274,7 +348,7 @@ def branches():
 
     server_app_menu.create_button(
         text="Edit Branch",
-        command=edit_branch_button,
+        command=update_branch_button_def,
         row=15,
         column=6,
         columnspan=3,
@@ -356,7 +430,7 @@ def new_branch_button():
     # Espacio para el botón
     server_app_menu.create_button (
         text="New Branch",
-        command=lambda : new_branch ( server_app_menu.name.get () , server_app_menu.last_name.get ()  ),
+        command=lambda : new_branch_button_def ( server_app_menu.name.get () , server_app_menu.last_name.get ()  ),
         row=15,
         column=8,
         columnspan=4,
@@ -382,7 +456,7 @@ def new_branch_button():
         font=("Arial", 14)
     )
 
-def edit_branch_button():
+def update_branch_button_def():
     # Crear una nueva ventana Toplevel para el menú
     menu_window = tk.Toplevel ( main_window )
     server_app_menu = Window ( menu_window )
@@ -458,7 +532,7 @@ def edit_branch_button():
     # Espacio para el botón
     server_app_menu.create_button (
         text="Edit Branch",
-        command=lambda : update_branch_data ( server_app_menu.user.get (), server_app_menu.name.get (), server_app_menu.last_name.get (), server_app_menu.password.get () ),
+        command=lambda : update_branch_button ( server_app_menu.user.get (), server_app_menu.name.get (), server_app_menu.last_name.get (), server_app_menu.password.get () ),
         row=17,
         column=8,
         columnspan=4,
@@ -564,12 +638,12 @@ def disconnect():
         anchor="w"
     )
 
-    server_app_menu.port = server_app_menu.create_entry ( row=9, column=9, columnspan=4 )
+    server_app_menu.user = server_app_menu.create_entry ( row=9, column=9, columnspan=4 )
 
     # Espacio para el botón
     server_app_menu.create_button (
         text="Reset Server",
-        command=lambda : central_server.disconnect_client ( int ( server_app_menu.port.get () )),
+        command=lambda : disconnect_branch_button ( server_app_menu.user.get()),
         row=15,
         column=8,
         columnspan=4,
@@ -670,7 +744,7 @@ def delete_branch_button ():
     # Espacio para el botón
     server_app_menu.create_button (
         text="Delete",
-        command=lambda : delete_branch ( server_app_menu.user.get ()),
+        command=lambda : delete_branch_button_def ( server_app_menu.user.get ()),
         row=15,
         column=8,
         columnspan=4,
@@ -904,7 +978,7 @@ def new_admin_button():
     # Espacio para el botón
     server_app_menu.create_button (
         text="New Admin",
-        command=lambda : new_administrator ( server_app_menu.name.get () , server_app_menu.last_name.get ()  ),
+        command=lambda : new_administrator_button_def ( server_app_menu.name.get () , server_app_menu.last_name.get ()  ),
         row=15,
         column=8,
         columnspan=4,
@@ -1006,7 +1080,7 @@ def edit_admin_button():
     # Espacio para el botón
     server_app_menu.create_button (
         text="Edit Admin",
-        command=lambda : update_admin_data ( server_app_menu.user.get (), server_app_menu.name.get (), server_app_menu.last_name.get (), server_app_menu.password.get () ),
+        command=lambda : update_admin_button_def ( server_app_menu.user.get (), server_app_menu.name.get (), server_app_menu.last_name.get (), server_app_menu.password.get () ),
         row=17,
         column=8,
         columnspan=4,
@@ -1067,7 +1141,7 @@ def delete_admin_button ():
     # Espacio para el botón
     server_app_menu.create_button (
         text="Delete",
-        command=lambda : delete_administrator ( server_app_menu.user.get ()),
+        command=lambda : delete_administrator_button_def ( server_app_menu.user.get ()),
         row=15,
         column=8,
         columnspan=4,
@@ -1231,7 +1305,7 @@ def open_menu_window():
         text="Log Out",
         command=logout,  # Llama a la función logout
         row=22,
-        column=18,
+        column=17,
         columnspan=1,
         rowspan=1,
         bg="#BFA980",  # Color del botón

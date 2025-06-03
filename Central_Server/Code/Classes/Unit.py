@@ -58,7 +58,7 @@ def new_user(name, last_name, curp):
         users_df.to_parquet(paths['users'], index=False)
 
         print(f"✅ Usuario '{user_code}' registrado correctamente con número {user_number}.")
-        return True
+        return user_code
 
     except Exception as e:
         print(f"❌ Error al registrar el usuario: {e}")
@@ -388,7 +388,7 @@ def new_branch(name, last_name, password="000000"):
         branches_df.to_parquet(branch_path, index=False)
 
         print(f"✅ Sucursal '{user_code}' creada correctamente.")
-        return True
+        return user_code
 
     except Exception as e:
         print(f"❌ Error al crear sucursal: {e}")
