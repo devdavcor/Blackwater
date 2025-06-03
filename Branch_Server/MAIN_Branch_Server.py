@@ -111,7 +111,8 @@ def start_server_button():
     # Espacio para el botón
     server_app_menu.create_button (
         text="Reset Server",
-        command=lambda : branch_server.settings ( server_app_menu.ip.get (), int ( server_app_menu.port.get () ), administrator, password),
+        #command=lambda : branch_server.settings ( server_app_menu.ip.get (), int ( server_app_menu.port.get () ), administrator, password),
+        command=lambda : settings_button_def ( server_app_menu.ip.get (), int ( server_app_menu.port.get () ), administrator, password),
         row=17,
         column=8,
         columnspan=4,
@@ -161,7 +162,7 @@ def stop_server():
 
     server_app_menu.create_button(
         text="Stop Server",
-        command=branch_server.stop_server,
+        command=stop_server_button_def,
         row=12,
         column=8,
         columnspan=4,
@@ -377,7 +378,8 @@ def disconnect():
     # Espacio para el botón
     server_app_menu.create_button (
         text="Disconnect",
-        command=lambda : branch_server.remove_client_connection ( server_app_menu.user.get ()),
+        #command=lambda : branch_server.remove_client_connection ( server_app_menu.user.get ()),
+        command=lambda : disconnect_button ( server_app_menu.user.get ()),
         row=15,
         column=8,
         columnspan=4,
@@ -609,7 +611,8 @@ def update_name_button():
     # Espacio para el botón
     server_app_menu.create_button (
         text="Update",
-        command=lambda : branch_server.update_name ( server_app_menu.user.get (), server_app_menu.name.get ()),
+        #command=lambda : branch_server.update_name ( server_app_menu.user.get (), server_app_menu.name.get ()),
+        command=lambda : update_name_button_def ( server_app_menu.user.get (), server_app_menu.name.get ()),
         row=17,
         column=8,
         columnspan=4,
@@ -686,7 +689,8 @@ def update_last_name_button():
     # Espacio para el botón
     server_app_menu.create_button (
         text="Update",
-        command=lambda : branch_server.update_lastname ( server_app_menu.user.get (), server_app_menu.last_name.get ()),
+        #command=lambda : branch_server.update_lastname ( server_app_menu.user.get (), server_app_menu.last_name.get ()),
+        command=lambda : update_lastname_button_def ( server_app_menu.user.get (), server_app_menu.last_name.get ()),
         row=17,
         column=8,
         columnspan=4,
@@ -761,8 +765,8 @@ def update_curp_button():
     # Espacio para el botón
     server_app_menu.create_button (
         text="Update",
-        command=lambda : branch_server.update_curp ( server_app_menu.user.get (),
-                                                         server_app_menu.curp.get () ),
+        #command=lambda : branch_server.update_curp ( server_app_menu.user.get (), server_app_menu.curp.get () ),
+        command=lambda : update_curp_button_def ( server_app_menu.user.get (), server_app_menu.curp.get () ),
         row=17,
         column=8,
         columnspan=4,
@@ -823,7 +827,8 @@ def delete_customer_button():
     # Espacio para el botón
     server_app_menu.create_button (
         text="Delete",
-        command=lambda : branch_server.delete_customer ( server_app_menu.user.get ()),
+        #command=lambda : branch_server.delete_customer ( server_app_menu.user.get ()),
+        command=lambda : delete_customer_button_def ( server_app_menu.user.get ()),
         row=17,
         column=8,
         columnspan=4,
@@ -884,7 +889,8 @@ def search_customer():
     # Espacio para el botón
     server_app_menu.create_button (
         text="Search",
-        command=lambda : branch_server.search_customer ( server_app_menu.curp.get ()),
+        #command=lambda : branch_server.search_customer ( server_app_menu.curp.get ()),
+        command=lambda : search_customer_button_def ( server_app_menu.curp.get ()),
         row=17,
         column=8,
         columnspan=4,
@@ -945,7 +951,8 @@ def update_biometrics_button():
     # Espacio para el botón
     server_app_menu.create_button (
         text="Update",
-        command=lambda : branch_server.update_biometrics ( server_app_menu.user.get () ),
+        #command=lambda : branch_server.update_biometrics ( server_app_menu.user.get () ),
+        command=lambda : update_biometrics_button_def ( server_app_menu.user.get () ),
         row=17,
         column=8,
         columnspan=4,
@@ -1035,7 +1042,8 @@ def new_customer_button():
     # Espacio para el botón
     server_app_menu.create_button (
         text="New customer",
-        command=lambda : branch_server.new_customer ( server_app_menu.name.get (), server_app_menu.last_name.get (), server_app_menu.curp.get ()),
+        #command=lambda : branch_server.new_customer ( server_app_menu.name.get (), server_app_menu.last_name.get (), server_app_menu.curp.get ()),
+        command=lambda : new_customer_button_def ( server_app_menu.name.get (), server_app_menu.last_name.get (), server_app_menu.curp.get ()),
         row=15,
         column=8,
         columnspan=4,
@@ -1063,58 +1071,89 @@ def new_customer_button():
         font=("Arial", 14)
     )
 
-def show_admin_button ():
-    messagebox.showinfo ( "Administrator", f"User: {administrator}" )
+def settings_button_def (ip, port, atm_allow, port_bs, administrator, password):
+    result =branch_server.settings(ip, port, atm_allow, port_bs, administrator, password)
+    print(result)
+    if result == False:
+        messagebox.showinfo ( "Settings", f"Error. Retry." )
+    else:
+        messagebox.showinfo ( "Settings", f"Server is running." )
     return
 
-def show_registered_admin():
+def stop_server_button_def():
+    result = branch_server.stop_server ()
+    print ( result )
+    if result == False :
+        messagebox.showinfo ( "Stop Server", f"Error. Retry." )
+    else :
+        messagebox.showinfo ( "Stor Server", f"Stop Server." )
+    return
 
-    # Crear nueva ventana
-    menu_window = tk.Toplevel(main_window)
-    server_app_menu = Window(menu_window)
+def disconnect_button (user):
+    result = branch_server.disconnect_client ( user )
+    print ( result )
+    if result == False :
+        messagebox.showinfo ( "Disconnet ATM", f"Error. Retry." )
+    else :
+        messagebox.showinfo ( "Disconnet ATM", f"ATM disconnected." )
+    return
 
-    server_app_menu.create_label(
-        text="Registered Administrators",
-        row=6,
-        column=6,
-        columnspan=8,
-        rowspan=1,
-        bg="#bf0413",
-        fg="white",
-        font=("Arial", 16)
-    )
+def new_customer_button_def (name, last_name, curp):
+    result = branch_server.new_customer ( name, last_name, curp )
+    if result == 'False' :
+        messagebox.showinfo ( "New Customer", f"Error. Retry." )
+    else :
+        messagebox.showinfo ( "New Customer", f"New customer created {result}." )
+    return
 
-    def close_window():
-        server_app_menu.root.destroy()
+def search_customer_button_def (curp):
+    result = branch_server.search_customer ( curp )
+    print(f'El resultado es {result}')
+    if result == 'False' :
+        messagebox.showinfo ( "Search Customer", f"Error. Retry." )
+    else :
+        messagebox.showinfo ( "Search Customer", f"Customer find: {result}." )
+    return
 
-    listbox = tk.Listbox(server_app_menu.root, font=("Arial", 12), width=50)
-    listbox.grid(row=10, column=6, columnspan=8, rowspan=10, padx=10, pady=10, sticky="nsew")
+def update_name_button_def (user, name):
+    result = branch_server.update_name ( user, name )
+    if result == 'False' :
+        messagebox.showinfo ( "Update Customer", f"Error. Retry." )
+    else :
+        messagebox.showinfo ( "Update Customer", f"New name {result}." )
+    return
 
-    # Ruta relativa al archivo Parquet
-    relative_path = Path("Resources/DB/administrators.parquet")
+def update_lastname_button_def (user, lastname):
+    result = branch_server.update_lastname ( user, lastname )
+    if result == 'False' :
+        messagebox.showinfo ( "Update Customer", f"Error. Retry." )
+    else :
+        messagebox.showinfo ( "Update Customer", f"New lastname {result}." )
+    return
 
-    try:
-        df = pd.read_parquet(relative_path)
+def update_curp_button_def (user, curp):
+    result = branch_server.update_lastname ( user, curp )
+    if result == 'False' :
+        messagebox.showinfo ( "Update Customer", f"Error. Retry." )
+    else :
+        messagebox.showinfo ( "Update Customer", f"New CURP {result}." )
+    return
 
-        if "user" in df.columns:
-            for i, user in enumerate(df["user"]):
-                listbox.insert(tk.END, f"{i + 1}. {user}")
-        else:
-            listbox.insert(tk.END, "La columna 'user' no existe en el archivo.")
-    except Exception as e:
-        listbox.insert(tk.END, f"Error reading atm: {e}")
+def update_biometrics_button_def (user):
+    result = branch_server.update_biometrics ( user )
+    if result == 'False' :
+        messagebox.showinfo ( "Update Customer", f"Error. Retry." )
+    else :
+        messagebox.showinfo ( "Update Customer", f"Biometrics has been updated." )
+    return
 
-    server_app_menu.create_button(
-        text="Back",
-        command=close_window,
-        row=22,
-        column=18,
-        columnspan=1,
-        rowspan=1,
-        bg="#F28907",
-        fg="#0D2626",
-        font=("Arial", 14)
-    )
+def delete_customer_button_def (user):
+    result = branch_server.delete_customer ( user )
+    if result== 'False' :
+        messagebox.showinfo ( "Delete Customer", f"Error. Retry." )
+    else :
+        messagebox.showinfo ( "Delete Customer", f"Delete user {result}." )
+    return
 
 def edit_customer_button():
     # Crear una nueva ventana Toplevel para el menú
@@ -1222,246 +1261,6 @@ def edit_customer_button():
         font=("Arial", 14)
     )
 
-
-def new_admin_button():
-    # Crear una nueva ventana Toplevel para el menú
-    menu_window = tk.Toplevel ( main_window )
-    server_app_menu = Window ( menu_window )
-    server_app_menu.create_label (
-        text="New Administrator",
-        row=6,
-        column=6,
-        columnspan=8,
-        rowspan=1,
-        bg="#bf0413",
-        fg="white",
-        font=("Arial", 16)
-    )
-
-    # Espacio para usuario
-    server_app_menu.create_label (
-        text="Name:",
-        row=9,
-        column=7,
-        columnspan=3,
-        rowspan=1,
-        bg="#bf0413",
-        fg="white",
-        font=("Arial", 16),
-        anchor="w"
-    )
-
-    server_app_menu.name = server_app_menu.create_entry ( row=9, column=9, columnspan=4 )
-
-    # Espacio para el password
-    server_app_menu.create_label (
-        text="Last Name:",
-        row=12,
-        column=7,
-        columnspan=3,
-        rowspan=1,
-        bg="#bf0413",
-        fg="white",
-        font=("Arial", 16),
-        anchor="w"
-    )
-
-    server_app_menu.last_name = server_app_menu.create_entry ( row=12, column=9, columnspan=4, show_text=True )
-
-    # Espacio para el botón
-    server_app_menu.create_button (
-        text="New Admin",
-        command=lambda : new_administrator ( server_app_menu.name.get () , server_app_menu.last_name.get ()  ),
-        row=15,
-        column=8,
-        columnspan=4,
-        rowspan=1,
-        bg="#D9CFCC",
-        fg="#0D2626",
-        font=("Arial", 14)
-    )
-    def close_window() :
-        # Cierra la ventana actual sin afectar otras ventanas
-        server_app_menu.root.destroy ()
-        # 'server_app_menu.root' es la ventana donde se encuentra el botón "Back"
-    # Creación del botón Back
-    server_app_menu.create_button (
-        text="Back",
-        command=close_window,  # Llama a la función close_window para cerrar solo la ventana actual
-        row=22,
-        column=18,
-        columnspan=1,
-        rowspan=1,
-        bg="#F28907",  # Color del botón
-        fg="#0D2626",
-        font=("Arial", 14)
-    )
-
-def edit_admin_button():
-    # Crear una nueva ventana Toplevel para el menú
-    menu_window = tk.Toplevel ( main_window )
-    server_app_menu = Window ( menu_window )
-    server_app_menu.create_label (
-        text="Edit Admin",
-        row=6,
-        column=6,
-        columnspan=8,
-        rowspan=1,
-        bg="#bf0413",
-        fg="white",
-        font=("Arial", 16)
-    )
-
-    # Espacio para usuario
-    server_app_menu.create_label (
-        text="User:",
-        row=9,
-        column=7,
-        columnspan=4,
-        rowspan=1,
-        bg="#bf0413",
-        fg="white",
-        font=("Arial", 16),
-        anchor="w"
-    )
-
-    server_app_menu.user = server_app_menu.create_entry ( row=9, column=10, columnspan=4 )
-
-    server_app_menu.create_label (
-        text="Name:",
-        row=11,
-        column=7,
-        columnspan=4,
-        rowspan=1,
-        bg="#bf0413",
-        fg="white",
-        font=("Arial", 16),
-        anchor="w"
-    )
-
-    server_app_menu.name = server_app_menu.create_entry ( row=11, column=10, columnspan=4 )
-
-    # Espacio para el password
-    server_app_menu.create_label (
-        text="Last Name:",
-        row=13,
-        column=7,
-        columnspan=4,
-        rowspan=1,
-        bg="#bf0413",
-        fg="white",
-        font=("Arial", 16),
-        anchor="w"
-    )
-
-    server_app_menu.last_name = server_app_menu.create_entry ( row=13, column=10, columnspan=4, show_text=True )
-
-    server_app_menu.create_label (
-        text="Password:",
-        row=15,
-        column=7,
-        columnspan=4,
-        rowspan=1,
-        bg="#bf0413",
-        fg="white",
-        font=("Arial", 16),
-        anchor="w"
-    )
-
-    server_app_menu.password = server_app_menu.create_entry ( row=15, column=10, columnspan=4, show_text=True )
-
-    # Espacio para el botón
-    server_app_menu.create_button (
-        text="Edit Admin",
-        command=lambda : update_admin_data ( server_app_menu.user.get (), server_app_menu.name.get (), server_app_menu.last_name.get (), server_app_menu.password.get () ),
-        row=17,
-        column=8,
-        columnspan=4,
-        rowspan=1,
-        bg="#D9CFCC",
-        fg="#0D2626",
-        font=("Arial", 14)
-    )
-
-    def close_window() :
-        # Cierra la ventana actual sin afectar otras ventanas
-        server_app_menu.root.destroy ()
-        # 'server_app_menu.root' es la ventana donde se encuentra el botón "Back"
-
-    # Creación del botón Back
-    server_app_menu.create_button (
-        text="Back",
-        command=close_window,  # Llama a la función close_window para cerrar solo la ventana actual
-        row=22,
-        column=18,
-        columnspan=1,
-        rowspan=1,
-        bg="#F28907",  # Color del botón
-        fg="#0D2626",
-        font=("Arial", 14)
-    )
-
-def delete_user_button ():
-    # Crear una nueva ventana Toplevel para el menú
-    menu_window = tk.Toplevel ( main_window )
-    server_app_menu = Window ( menu_window )
-    server_app_menu.create_label (
-        text="Delete Admin",
-        row=6,
-        column=6,
-        columnspan=8,
-        rowspan=1,
-        bg="#bf0413",
-        fg="white",
-        font=("Arial", 16)
-    )
-
-    # Espacio para usuario
-    server_app_menu.create_label (
-        text="Admin:",
-        row=9,
-        column=7,
-        columnspan=3,
-        rowspan=1,
-        bg="#bf0413",
-        fg="white",
-        font=("Arial", 16),
-        anchor="w"
-    )
-
-    server_app_menu.user = server_app_menu.create_entry ( row=9, column=9, columnspan=4 )
-
-    # Espacio para el botón
-    server_app_menu.create_button (
-        text="Delete",
-        command=lambda : delete_administrator ( server_app_menu.user.get ()),
-        row=15,
-        column=8,
-        columnspan=4,
-        rowspan=1,
-        bg="#D9CFCC",
-        fg="#0D2626",
-        font=("Arial", 14)
-    )
-
-    def close_window() :
-        # Cierra la ventana actual sin afectar otras ventanas
-        server_app_menu.root.destroy ()
-        # 'server_app_menu.root' es la ventana donde se encuentra el botón "Back"
-
-    # Creación del botón Back
-    server_app_menu.create_button (
-        text="Back",
-        command=close_window,  # Llama a la función close_window para cerrar solo la ventana actual
-        row=22,
-        column=18,
-        columnspan=1,
-        rowspan=1,
-        bg="#F28907",  # Color del botón
-        fg="#0D2626",
-        font=("Arial", 14)
-    )
-
 def logs():
     # Crear una nueva ventana Toplevel para el menú
     menu_window = tk.Toplevel(main_window)
@@ -1521,19 +1320,7 @@ def open_menu_window():
         fg="white",
         font=("Arial", 16)
     )
-    '''
-    server_app_menu.create_button(
-        text="Start Server",
-        command=start_server_button,
-        row=9,
-        column=2,
-        columnspan=4,
-        rowspan=1,
-        bg="#D9CFCC",
-        fg="#0D2626",
-        font=("Arial", 14)
-    )
-    '''
+
     server_app_menu.create_button(
         text="Stop Server",
         command=stop_server,

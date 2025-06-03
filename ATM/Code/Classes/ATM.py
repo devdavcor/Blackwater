@@ -8,6 +8,13 @@ class ATM:
         self.port_branch = port_branch
         self.balance = 0
 
+    def send_alert(self, sender_info) :
+        """Envía una alerta con la información del remitente."""
+        command = f"ALERT|{sender_info}"
+        response = self.send_message ( command )
+        print ( f"[ATM] Alerta enviada: {response}" )
+        return response
+
     def start(self) :
         """Inicia la conexión con el servidor Branch (B) sin interacción manual."""
         try :
@@ -65,6 +72,12 @@ class ATM:
                 return None
         else :
             raise ValueError ( "Respuesta inválida o inesperada" )
+
+    def update_password(self, user, new_password):
+        """Actualiza la contraseña del usuario."""
+        response = self.send_message(f"UPDATE_PASSWORD|{user}|{new_password}")
+        print(f"[ATM] Contraseña actualizada: {response}")
+        return response
 
 
 

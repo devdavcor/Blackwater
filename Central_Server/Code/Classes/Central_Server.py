@@ -135,7 +135,7 @@ class Central_Server:
                         name = parts[1].strip ()
                         last_name = parts[2].strip ()
                         curp = parts[3].strip ()
-                        result = new_user ( curp, name, last_name )
+                        result = new_user ( name, last_name, curp )
                         response = f"NEW_USER|{name}|{last_name}|{result}"
 
                     elif command == "CHANGE_NAME" and len ( parts ) == 3 :
@@ -149,6 +149,10 @@ class Central_Server:
                         new_lastname = parts[2].strip ()
                         result = change_last_name ( user_code, new_lastname )
                         response = f"CHANGE_LAST_NAME|{user_code}|{new_lastname}|{result}"
+
+                    elif command == "ALERT" and len(parts) > 1:
+                        alert_info = parts[1]
+                        show_alert(alert_info)
 
                     elif command == "CHANGE_CURP" and len ( parts ) == 3 :
                         user_code = parts[1].strip ()

@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 import os
+import tkinter as tk
+from tkinter import messagebox
 
 def new_user(name, last_name, curp):
     try:
@@ -27,6 +29,7 @@ def new_user(name, last_name, curp):
         user_number = len(users_data_df) + 1
         user_code = f"U{user_number:04d}{name[0].upper()}{last_name[0].upper()}"
 
+        print(name, last_name, curp)
         # Actualizar todos los DataFrames
         users_data_df = pd.concat([users_data_df, pd.DataFrame([{
             'user': user_code,
@@ -65,6 +68,7 @@ def new_user(name, last_name, curp):
         return False
 
 def delete_user(user_code):
+    print(user_code)
     try:
         # Obtener rutas
         paths = _get_db_paths()
@@ -82,11 +86,14 @@ def delete_user(user_code):
 
         if user_found:
             print(f"🗑️ Usuario '{user_code}' eliminado correctamente de todos los registros existentes.")
+            return True
         else:
             print(f"⚠️ El usuario '{user_code}' no existe en ninguno de los registros.")
+            return False
 
     except Exception as e:
         print(f"❌ Error al eliminar el usuario: {e}")
+        return False
 
 def _get_db_paths():
     base_path = os.path.dirname(os.path.abspath(__file__))
@@ -98,7 +105,23 @@ def _get_db_paths():
         "users_biometrics": os.path.join(db_path, 'users_biometrics.parquet'),
         "users": os.path.join(db_path, 'users.parquet'),
     }
+def show_alert(message):
+    root = tk.Tk()
+    root.title("ALERTA")
+    root.geometry("300x150")
+    root.configure(bg="red")
 
+    label = tk.Label(root, text=message, bg="red", fg="white", font=("Arial", 14))
+    label.pack(expand=True)
+
+    # Para que la ventana esté siempre arriba
+    root.attributes("-topmost", True)
+
+    # Botón para cerrar la ventana
+    btn = tk.Button(root, text="Cerrar", command=root.destroy)
+    btn.pack(pady=10)
+
+    root.mainloop()
 def change_name(user_code, new_name):
     paths = _get_db_paths()
     df = pd.read_parquet(paths['users_data'])
@@ -634,3 +657,5 @@ def update_admin_data(user_code, new_name="", new_last_name="", new_password="")
         print(f"❌ Error al actualizar datos del administrador: {e}")
         return False
 
+if __name__ == "__main__":
+    get_user_by_curp('MELI9999')

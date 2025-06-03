@@ -1,19 +1,19 @@
-from enum import global_enum_repr
-from pathlib import Path
 import os
 import random
 import time
-
-import absl.logging
-absl.logging.set_verbosity(absl.logging.ERROR)
-
+import math
 
 import cv2
 import face_recognition
 import mediapipe as mp
-import math
 import numpy as np
 import pandas as pd
+
+import absl.logging
+absl.logging.set_verbosity(absl.logging.ERROR)
+
+from enum import global_enum_repr
+from pathlib import Path
 
 import tkinter as tk
 from tkinter import Tk, messagebox
@@ -22,30 +22,91 @@ from PIL import Image, ImageTk
 from Code.Classes.ATM import ATM
 from Code.Classes.Login import Login
 from Code.Classes.Window import Window
-
-
+from Code.Classes.clasificator_real_time import *
 
 # ---------- Funciones Auxiliares ----------
 atm = None
 administrator = None
 password = None
+alert = None
+
+import random
+from tkinter import messagebox
 
 def try_login():
-    global atm, administrator, password  # Aquí le dices que usarás la variable global
+    global atm, administrator, password, alert
+    admin = server_app.user.get()
+    password = server_app.password.get()
+
+    result = login_instance.start_login(admin, password)
+    if not result:
+        messagebox.showerror("Login", "User or password incorrect.")
+        return False
+
+    administrator = admin
+    atm = ATM('192.168.0.253', 11000)
+    atm.start()
+
+    messagebox.showerror ( "Login", "See the camera to validate your face." )
+    var_1 = validate_face()
+    if not var_1:
+        messagebox.showerror("Login", "Authentication failed. Please try again.")
+        return False
+
+    var_2 = capture_and_classify()
+    if var_2 is False:
+        messagebox.showerror ( "Login", "Validate your hand gesture." )
+        alert = detectar_mano_abierta()
+    else:
+        aux = random.choice([True, False])
+        if aux:
+            messagebox.showerror ( "Login", "Validate your hand gesture." )
+            alert = detectar_mano_abierta ()
+
+    messagebox.showinfo("Login", f"Welcome, {administrator}!")
+    main_window.withdraw()
+    open_menu_window()
+    atm.send_alert(administrator)
+    return True
+
+
+'''
+def try_login():
+    global atm, administrator, password, alert  # Aquí le dices que usarás la variable global
     admin = server_app.user.get()
     password = server_app.password.get()
     result = login_instance.start_login(admin, password)
 
     if result:
         administrator = admin
-        messagebox.showinfo("Login", f"Welcome, {result}!")
-        main_window.withdraw()
         atm = ATM('192.168.0.253', 11000)  # Crear la instancia aquí
         atm.start ()
-        open_menu_window()
+        var_1 = validate_face()
+        if var_1:
+            var_2 = capture_and_classify()
+            if var_2 == False:
+                alert = detectar_mano_abierta()
+            else:
+                if random.choice([True, False]):
+                    alert = detectar_mano_abierta ()
+                else:
+                    alert = True
+        else:
+            messagebox.showerror ( "Login", "Authenticaition failed. Please try again." )
+            try_login ()
 
+        if var_1:
+            messagebox.showinfo("Login", f"Welcome, {result}!")
+            main_window.withdraw()
+            open_menu_window()
+            atm.send_alert(administrator)
+        else:
+            messagebox.showerror ( "Login", "Authenticaition failed. Please try again." )
+            try_login()
     else:
         messagebox.showerror("Login", "User or password incorrect.")
+'''
+
 
 def logs():
     # Crear una nueva ventana Toplevel para el menú
@@ -133,7 +194,7 @@ def open_menu_window():
 
     server_app_menu.create_button (
         text="Change NIP",
-        command=print('Change NIP'),  # Llama a la función "clients"
+        command=change_nip_button,
         row=14,
         column=8,
         columnspan=4,
@@ -145,7 +206,7 @@ def open_menu_window():
 
     server_app_menu.create_button (
         text="Withdraw Cash",
-        command=withdraw_cash_button,  # Llama a la función "logs"
+        command=withdraw_cash_button,
         row=9,
         column=14,
         columnspan=4,
@@ -155,10 +216,10 @@ def open_menu_window():
         font=("Arial", 14)
     )
 
-    '''
+
     server_app_menu.create_button (
         text="Prueba identidad",
-        command=validate_face,  # Llama a la función "logs"
+        command=validate_face,
         row=14,
         column=14,
         columnspan=4,
@@ -170,7 +231,7 @@ def open_menu_window():
 
     server_app_menu.create_button (
         text="Open Close",
-        command=detectar_mano_abierta,  # Llama a la función "logs"
+        command=detectar_mano_abierta,
         row=19,
         column=14,
         columnspan=4,
@@ -179,20 +240,20 @@ def open_menu_window():
         fg="#0D2626",
         font=("Arial", 14)
     )
-    '''
+
     server_app_menu.create_button (
         text="Log Out",
-        command=logout,  # Llama a la función logout
+        command=logout,
         row=22,
         column=17,
         columnspan=1,
         rowspan=1,
-        bg="#d94e4e",  # Color del botón
+        bg="#d94e4e",
         fg="#0D2626",
         font=("Arial", 14)
     )
 
-    menu_window.mainloop()  # Mantener la ventana abierta
+    menu_window.mainloop()
 
 def chek_balance():
     balance_info = atm.check_balance(administrator)
@@ -288,10 +349,7 @@ def capture_face_vector(timeout=5):
 
 mp_hands = mp.solutions.hands
 
-import cv2
-import mediapipe as mp
-import math
-import time
+
 
 def detectar_mano_abierta():
     mp_hands = mp.solutions.hands
@@ -419,6 +477,77 @@ def get_parquet_path():
 
 parquet_path = get_parquet_path()
 login_instance = Login(parquet_path)
+
+def change_nip_button():
+    # Crear una nueva ventana Toplevel para el menú
+    menu_window = tk.Toplevel ( main_window )
+    server_app_menu = Window ( menu_window )
+    server_app_menu.create_label (
+        text="Please, introduce the new NIP to update.",
+        row=6,
+        column=6,
+        columnspan=8,
+        rowspan=1,
+        bg="#F25CBE",
+        fg="white",
+        font=("Arial", 16)
+    )
+
+    server_app_menu.create_label (
+        text="New Password:",
+        row=11,
+        column=7,
+        columnspan=4,
+        rowspan=1,
+        bg="#F25CBE",
+        fg="white",
+        font=("Arial", 16),
+        anchor="w"
+    )
+
+    server_app_menu.password = server_app_menu.create_entry ( row=11, column=10, columnspan=4 )
+
+    # Espacio para el botón
+    server_app_menu.create_button (
+        text="Update",
+        # command=lambda : branch_server.update_name ( server_app_menu.user.get (), server_app_menu.name.get ()),
+        command=lambda : update_password (password),
+        row=17,
+        column=8,
+        columnspan=4,
+        rowspan=1,
+        bg="#D9CFCC",
+        fg="#0D2626",
+        font=("Arial", 14)
+    )
+
+    def close_window() :
+        # Cierra la ventana actual sin afectar otras ventanas
+        server_app_menu.root.destroy ()
+        # 'server_app_menu.root' es la ventana donde se encuentra el botón "Back"
+
+    # Creación del botón Back
+    server_app_menu.create_button (
+        text="Back",
+        command=close_window,  # Llama a la función close_window para cerrar solo la ventana actual
+        row=22,
+        column=18,
+        columnspan=1,
+        rowspan=1,
+        bg="#d94e4e",  # Color del botón
+        fg="#0D2626",
+        font=("Arial", 14)
+    )
+
+
+def update_password(password):
+    global administrator
+    result = atm.update_password(administrator, password)
+    if result == False:
+        messagebox.showinfo ( "Update Password", f"Error. Try again." )
+    if result == True:
+        messagebox.showinfo ( "Update Password", f"The password was updated." )
+    print("Start Server")
 
 if __name__ == "__main__":
     main_window = Tk()

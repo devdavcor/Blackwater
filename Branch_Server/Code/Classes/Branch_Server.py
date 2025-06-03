@@ -222,8 +222,11 @@ class Branch_Server:
         # Reiniciar el servidor con las nuevas credenciales
         self.start_server ( user, password )
 
-    def new_customer(self, curp, name, last_name) :
-        petition = f"NEW_USER|{curp}|{name}|{last_name}"
+        return True
+
+    def new_customer(self, name, last_name, curp) :
+        petition = f"NEW_USER|{name}|{last_name}|{curp}"
+        print(f"La petición es: {petition}")
         response = self.send_command_to_a ( petition )
         # Dividir la respuesta por '|'
         parts = response.split ( '|' )
@@ -300,6 +303,7 @@ class Branch_Server:
         # Devolver el último elemento (el resultado)
         if len ( parts ) >= 2 :
             print ( response )
+            print(f'User {parts[-1]}')
             return parts[-1]  # o parts[1]
         else :
             return "ERROR|Invalid response format"
