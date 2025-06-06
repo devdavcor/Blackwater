@@ -9,6 +9,8 @@ import mediapipe as mp
 import numpy as np
 import pandas as pd
 
+import sys
+
 import absl.logging
 absl.logging.set_verbosity(absl.logging.ERROR)
 
@@ -38,16 +40,15 @@ def try_login():
     admin = server_app.user.get()
     password = server_app.password.get()
 
-    result = login_instance.start_login(admin, password)
-    if not result:
-        messagebox.showerror("Login", "User or password incorrect.")
-        return False
-
     administrator = admin
     atm = ATM('192.168.0.253', 11000)
-    atm.start()
+    aux = atm.start(admin, password)
 
-    messagebox.showerror ( "Login", "See the camera to validate your face." )
+    if aux == False :
+        messagebox.showerror ( "Login", "User or password incorrect." )
+        sys.exit ()
+
+    messagebox.showinfo ( "Login", "See the camera to validate your face." )
     var_1 = validate_face()
     if not var_1:
         messagebox.showerror("Login", "Authentication failed. Please try again.")
@@ -55,58 +56,22 @@ def try_login():
 
     var_2 = capture_and_classify()
     if var_2 is False:
-        messagebox.showerror ( "Login", "Validate your hand gesture." )
+        messagebox.showinfo ( "Login", "Validate your hand gesture." )
         alert = detectar_mano_abierta()
+        if alert == False :
+            atm.send_alert ( administrator )
     else:
         aux = random.choice([True, False])
         if aux:
             messagebox.showerror ( "Login", "Validate your hand gesture." )
             alert = detectar_mano_abierta ()
+            if alert == False :
+                atm.send_alert ( administrator )
 
     messagebox.showinfo("Login", f"Welcome, {administrator}!")
     main_window.withdraw()
     open_menu_window()
-    atm.send_alert(administrator)
     return True
-
-
-'''
-def try_login():
-    global atm, administrator, password, alert  # Aquí le dices que usarás la variable global
-    admin = server_app.user.get()
-    password = server_app.password.get()
-    result = login_instance.start_login(admin, password)
-
-    if result:
-        administrator = admin
-        atm = ATM('192.168.0.253', 11000)  # Crear la instancia aquí
-        atm.start ()
-        var_1 = validate_face()
-        if var_1:
-            var_2 = capture_and_classify()
-            if var_2 == False:
-                alert = detectar_mano_abierta()
-            else:
-                if random.choice([True, False]):
-                    alert = detectar_mano_abierta ()
-                else:
-                    alert = True
-        else:
-            messagebox.showerror ( "Login", "Authenticaition failed. Please try again." )
-            try_login ()
-
-        if var_1:
-            messagebox.showinfo("Login", f"Welcome, {result}!")
-            main_window.withdraw()
-            open_menu_window()
-            atm.send_alert(administrator)
-        else:
-            messagebox.showerror ( "Login", "Authenticaition failed. Please try again." )
-            try_login()
-    else:
-        messagebox.showerror("Login", "User or password incorrect.")
-'''
-
 
 def logs():
     # Crear una nueva ventana Toplevel para el menú

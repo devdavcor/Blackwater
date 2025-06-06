@@ -5,6 +5,7 @@ import random
 import os
 import pandas as pd
 from pathlib import Path
+import sys
 
 from Code.Classes.Window import Window
 from Code.Classes.Login import Login
@@ -21,15 +22,18 @@ def try_login():
     global branch_server, administrator, password  # Aquí le dices que usarás la variable global
     admin = server_app.user.get()
     password = server_app.password.get()
-    result = login_instance.start_login(admin, password)
-
+    #result = login_instance.start_login(admin, password)
+    result = True
     if result:
         global administrator
         administrator = admin
-        messagebox.showinfo("Login", f"Welcome, {result}!")
-        main_window.withdraw()
         branch_server = Branch_Server('192.168.0.253', 10000)  # Crear la instancia aquí
-        branch_server.start_server(admin, password)
+        aux = branch_server.start_server(admin, password)
+        if aux == False:
+            messagebox.showerror ( "Login", "User or password incorrect." )
+            sys.exit ()
+        messagebox.showinfo ( "Login", f"Welcome, {result}!" )
+        main_window.withdraw ()
         open_menu_window()
     else:
         messagebox.showerror("Login", "User or password incorrect.")

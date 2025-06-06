@@ -105,8 +105,9 @@ class Central_Server:
             user_input, password_input = data.split ( '|', 1 )
 
             if not self.validate_credentials ( user_input, password_input ) :
+                conn.sendall ( b"BRANCH_CREDENTIALS|False" )
                 conn.sendall ( b"Invalid credentials or user already connected. Disconnecting.\n" )
-                return
+                return False
 
             with self.clients_lock :
                 self.connected_users.add ( user_input )
@@ -238,6 +239,16 @@ class Central_Server:
                         user_code = parts[1].strip ()
                         result = delete_branch ( user_code )
                         response = f"DELETE_BRANCH|{user_code}|{result}"
+
+                    elif command == "ATM_CREDENTIALS" and len ( parts ) == 3 :
+                        user_code = parts[1].strip ()
+                        password = parts[2].strip ()
+                        response = f"ATM_CREDENTIALS|{atm_validate_credentials(user_code, password)}"
+
+                    elif command == "BRANCH_CREDENTIALS" and len ( parts ) == 2 :
+                        user_code = parts[1].strip ()
+                        password = parts[2].strip ()
+                        response = f"BRANCH_CREDENTIALS|{branch_validate_credentials(user_code, password)}"
 
                     else :
                         response = f"Unknown or malformed command: {message}"

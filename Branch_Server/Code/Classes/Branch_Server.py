@@ -26,17 +26,16 @@ class Branch_Server:
 
         message = s.recv(32768).decode()
         print(f"[B] Message from A: {message}")
-
         credentials = f"{user}|{password}"
         s.sendall(credentials.encode())
-
         response = s.recv(32768).decode()
+
         print(f"[B] Authentication response: {response}")
 
         if "successful" not in response.lower():
             print("[B] Authentication failed. Closing connection.")
             s.close()
-            return None
+            return False
 
         return s
 
@@ -84,12 +83,40 @@ class Branch_Server:
 
     def handle_client_c(self, conn_c, conn_a) :
         try :
+            # Fase 1: autenticación
+            data = conn_c.recv ( 32768 )
+            if not data :
+                print ( f"[B] Client disconnected (before auth): {conn_c.getpeername ()}" )
+                return
+
+            decoded_data = data.decode ()
+            print ( f"[B] Received from C (credentials): {decoded_data}" )
+
+            if not decoded_data.startswith ( "ATM_CREDENTIALS|" ) :
+                print ( "[B] Invalid credential format from client C. Closing connection." )
+                conn_c.sendall ( b"ATM_CREDENTIALS|False" )
+                return
+
+            conn_a.sendall ( data )  # reenvía a A
+            response = conn_a.recv ( 32768 )
+            print ( f"[B] Response from A (credentials): {response.decode ()}" )
+
+            conn_c.sendall ( response )  # reenvía respuesta a C
+
+            if b"True" not in response :
+                print ( "[B] Client C failed authentication." )
+                return
+
+            print ( "[B] Client C authenticated successfully." )
+
+            # Fase 2: comunicación normal post-login
             while True :
                 data = conn_c.recv ( 32768 )
                 if not data :
                     print ( f"[B] Client disconnected: {conn_c.getpeername ()}" )
                     break
                 print ( f"[B] Received from C: {data.decode ()}" )
+
                 try :
                     conn_a.sendall ( data )
                     response = conn_a.recv ( 32768 )
@@ -143,7 +170,7 @@ class Branch_Server:
         if not self.conn_a :
             print ( "[B] No se pudo conectar a A. Cancelando servidor." )
             self.server_running = False
-            return
+            return False
 
         accept_thread = threading.Thread ( target=self.listen_for_client_c, daemon=True )
         accept_thread.start ()
@@ -180,6 +207,20 @@ class Branch_Server:
         except Exception as e:
             print(f"[B] Error sending command to A: {e}")
             return f"ERROR|{str(e)}"
+
+    def validate_credentials(self, password, user_code) :
+        petition = f"ATM_CREDENTIALS|{user_code}|{password}"
+        response = self.send_command_to_a ( petition )
+
+        # Dividir la respuesta por '|'
+        parts = response.split ( '|' )
+
+        # Devolver el último elemento (el resultado)
+        if len ( parts ) >= 3 :
+            print ( response )
+            return parts[-1]  # o parts[2]
+        else :
+            return "ERROR|Invalid response format"
 
     def stop_server(self) :
         print ( "[B] Stopping server..." )

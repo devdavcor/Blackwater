@@ -15,18 +15,26 @@ class ATM:
         print ( f"[ATM] Alerta enviada: {response}" )
         return response
 
-    def start(self) :
-        """Inicia la conexión con el servidor Branch (B) sin interacción manual."""
+    def start(self, user, password) :
         try :
-            self.s = socket.socket ( socket.AF_INET, socket.SOCK_STREAM )
-            self.s.connect ( (self.ip_branch, self.port_branch) )
+            self.conn_b = socket.socket ( socket.AF_INET, socket.SOCK_STREAM )
+            self.conn_b.connect ( (self.ip_branch, self.port_branch) )
             print ( "[ATM] Conectado con Branch Server (B)" )
-        except ConnectionRefusedError :
-            print ( "[ATM] Error: No se pudo conectar al Branch Server." )
+
+            credentials_msg = f"ATM_CREDENTIALS|{user}|{password}"
+            self.conn_b.sendall ( credentials_msg.encode () )
+            print ( f"[ATM] Credenciales enviadas: {credentials_msg}" )
+
+            response = self.conn_b.recv ( 1024 ).decode ()
+            print ( f"[ATM] Respuesta de B: {response}" )
+
+            return "TRUE" in response.upper ()
+
         except Exception as e :
             print ( f"[ATM] Error: {e}" )
+            return False
 
-    def send_message(self, message):
+    '''def send_message(self, message):
         """Método auxiliar para enviar un mensaje al servidor y recibir respuesta."""
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -35,7 +43,7 @@ class ATM:
                 data = s.recv(32768)
                 return data.decode()
         except Exception as e:
-            return f"[ATM] Error: {e}"
+            return f"[ATM] Error: {e}"'''
 
     def check_balance(self, user):
         """Consulta el saldo del usuario."""
@@ -55,23 +63,25 @@ class ATM:
         print(f"[ATM] Retiro: {response}")
         return response
 
-    def get_biometrics(self, user) :
-        """Solicita la lista de biométricos del usuario."""
-        response = self.send_message ( f"GET_BIOMETRICS|{user}" )
-        print ( f"[ATM] Biometrics response: {response}" )
+    def send_message(self, message: str) -> str:
+        self.conn_b.sendall(message.encode())
+        return self.conn_b.recv(32768).decode()
 
-        parts = response.split ( "|" )
-        if len ( parts ) >= 3 and parts[0] == "GET_BIOMETRICS" and parts[1] == user :
-            # Reemplaza múltiples espacios por comas
-            vector_str = re.sub ( r'\s+', ', ', parts[2].strip () )
-            try :
-                biometrics_list = ast.literal_eval ( vector_str )
+    def get_biometrics(self, user):
+        response = self.send_message(f"GET_BIOMETRICS|{user}")
+        print(f"[ATM] Biometrics response: {response}")
+
+        parts = response.split("|")
+        if len(parts) >= 3 and parts[0] == "GET_BIOMETRICS" and parts[1] == user:
+            vector_str = re.sub(r'\s+', ', ', parts[2].strip())
+            try:
+                biometrics_list = ast.literal_eval(vector_str)
                 return biometrics_list
-            except (SyntaxError, ValueError) as e :
-                print ( f"[ERROR] No se pudo interpretar el vector: {e}" )
+            except (SyntaxError, ValueError) as e:
+                print(f"[ERROR] No se pudo interpretar el vector: {e}")
                 return None
-        else :
-            raise ValueError ( "Respuesta inválida o inesperada" )
+        else:
+            raise ValueError("Respuesta inválida o inesperada")
 
     def update_password(self, user, new_password):
         """Actualiza la contraseña del usuario."""
