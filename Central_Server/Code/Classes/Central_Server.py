@@ -110,7 +110,13 @@ class Central_Server:
                 return False
 
             with self.clients_lock :
+                # Verifica que el usuario no esté ya conectado (si no lo haces en validate_credentials)
+                if user_input in self.connected_users :
+                    conn.sendall ( b"[ERROR] User already connected. Disconnecting.\n" )
+                    return False
+
                 self.connected_users.add ( user_input )
+                self.clients_connections.append ( (conn, addr, user_input) )
 
             conn.sendall ( b"Authentication successful. Welcome.\n" )
             request_number = 1
@@ -262,38 +268,42 @@ class Central_Server:
             print ( f"[ERROR] With client {addr}: {e}" )
 
         finally :
-            conn.close ()
             with self.clients_lock :
+                if user_input in self.connected_users :
+                    self.connected_users.remove ( user_input )
+                # Eliminar la conexión con el usuario correspondiente
+                self.clients_connections = [
+                    (c, a, u) for (c, a, u) in self.clients_connections if u != user_input
+                ]
                 self.clients_active -= 1
-                self.clients_connections = [c for c in self.clients_connections if c[1] != addr]
-                if user_input :
-                    self.connected_users.discard ( user_input )
+            conn.close ()
             print ( f"[-] Client {addr} disconnected" )
 
     # Método para aceptar y validar conexiones
-    def accept_connections(self):
-        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket.bind((self.host, self.port))
-        self.server_socket.listen()
-        print(f"🚀 Server listening on {self.host}:{self.port} (max {self.max_clients} clients)\n")
+    def accept_connections(self) :
+        self.server_socket = socket.socket ( socket.AF_INET, socket.SOCK_STREAM )
+        self.server_socket.bind ( (self.host, self.port) )
+        self.server_socket.listen ()
+        print ( f"🚀 Server listening on {self.host}:{self.port} (max {self.max_clients} clients)\n" )
 
         self.running = True
 
-        while self.running:
-            try:
-                conn, addr = self.server_socket.accept()
-                with self.clients_lock:
-                    if self.clients_active >= self.max_clients:
-                        conn.sendall(b"Server busy. Try later.")
-                        conn.close()
+        while self.running :
+            try :
+                conn, addr = self.server_socket.accept ()
+                with self.clients_lock :
+                    if self.clients_active >= self.max_clients :
+                        conn.sendall ( b"Server busy. Try later." )
+                        conn.close ()
                         continue
                     self.clients_active += 1
-                    self.clients_connections.append((conn, addr))
+                    # NO agregues aquí todavía la conexión ni el user porque no sabes quién es
 
-                client_thread = threading.Thread(target=self.handle_client, args=(conn, addr), daemon=True)
-                client_thread.start()
-            except Exception as e:
-                print(f"[ERROR] Accepting connections: {e}")
+                # Inicia el hilo que hará la autenticación y luego añadirá la conexión
+                client_thread = threading.Thread ( target=self.handle_client, args=(conn, addr), daemon=True )
+                client_thread.start ()
+            except Exception as e :
+                print ( f"[ERROR] Accepting connections: {e}" )
 
     # Método para iniciar el servidor
     def start_server(self) :
@@ -349,10 +359,35 @@ class Central_Server:
                     except Exception as e:
                         print(f"[ERROR] Disconnecting client {addr}: {e}")
                         return False
-                    self.clients_connections = [c for c in self.clients_connections if c[1] != addr]
+                    self.clients_connections = [user for _, _, user in self.clients_connections]
                     self.clients_active -= 1
                     return True
         print(f"No client found with address {addr}")
+        return False
+
+    def disconnect_client_by_user(self, user) :
+        with self.clients_lock :
+            for conn, addr, u in self.clients_connections :
+                if u == user :
+                    try :
+                        # Enviar mensaje previo a la desconexión
+                        conn.sendall ( b"Disconnected by server.\n" )
+                        conn.shutdown ( socket.SHUT_RDWR )  # Recomendado antes de cerrar
+                        conn.close ()
+                        print ( f"ALERT|Client {user} disconnected manually." )
+                    except Exception as e :
+                        print ( f"[ERROR] Disconnecting client {user}: {e}" )
+                        return False
+
+                    # Eliminar correctamente la conexión del listado
+                    self.clients_connections = [
+                        (c, a, usr) for c, a, usr in self.clients_connections if usr != user
+                    ]
+                    self.connected_users.discard ( user )
+                    self.clients_active -= 1
+                    return True
+
+        print ( f"No client found with user {user}" )
         return False
 
     # Método para mostrar clientes conectados

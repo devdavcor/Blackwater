@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 import os
 import time
+from tkinter import Tk, messagebox
+import tkinter as tk
 
 class Branch_Server:
     def __init__(self, server_a_ip, server_a_port, listen_port=11000, max_connections=3) :
@@ -19,25 +21,44 @@ class Branch_Server:
         self.clients_connections = []
         self.clients_lock = threading.Lock ()
 
-    def connect_to_server_a(self, user, password):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((self.server_a_ip, self.server_a_port))
-        print("[B] Connected to server A")
+    def connect_to_server_a(self, user, password) :
+        try :
+            s = socket.socket ( socket.AF_INET, socket.SOCK_STREAM )
+            s.connect ( (self.server_a_ip, self.server_a_port) )
+            print ( "[B] Connected to server A" )
 
-        message = s.recv(32768).decode()
-        print(f"[B] Message from A: {message}")
-        credentials = f"{user}|{password}"
-        s.sendall(credentials.encode())
-        response = s.recv(32768).decode()
+            message = s.recv ( 32768 ).decode ()
+            if not message :
+                print ( "[B] El servidor cerró la conexión inmediatamente." )
+                s.close ()
+                return False
+            print ( f"[B] Message from A: {message}" )
 
-        print(f"[B] Authentication response: {response}")
+            credentials = f"{user}|{password}"
+            s.sendall ( credentials.encode () )
+            response = s.recv ( 32768 ).decode ()
+            if not response :
+                print ( "[B] El servidor cerró la conexión después del login." )
+                s.close ()
+                return False
 
-        if "successful" not in response.lower():
-            print("[B] Authentication failed. Closing connection.")
-            s.close()
+            print ( f"[B] Authentication response: {response}" )
+            if "successful" not in response.lower () :
+                print ( "[B] Authentication failed. Closing connection." )
+                s.close ()
+                return False
+
+            # 🧵 Iniciar un hilo para escuchar mensajes sin bloquear la UI
+            threading.Thread ( target=self.listen_to_server, args=(s,), daemon=True ).start ()
+
+            return True
+
+        except ConnectionRefusedError :
+            print ( "[B] No se pudo conectar: el servidor A no está disponible." )
             return False
-
-        return s
+        except Exception as e :
+            print ( f"[B] [ERROR de conexión] {e}" )
+            return False
 
     def listen_for_client_c(self) :
         with socket.socket ( socket.AF_INET, socket.SOCK_STREAM ) as server :
@@ -55,7 +76,7 @@ class Branch_Server:
                     continue
 
                 try :
-                    print ( f"[B] Waiting for client C to connect... ({active_clients}/{self.max_connections})" )
+                    #print ( f"[B] Waiting for client C to connect... ({active_clients}/{self.max_connections})" )
                     server.settimeout ( 1.0 )  # timeout para poder checar stop_event periódicamente
                     conn_c, addr = server.accept ()
                     print ( f"[B] Client C connected: {addr}" )
@@ -81,6 +102,26 @@ class Branch_Server:
 
             print ( f"[B] Server stopped accepting clients." )
 
+    def listen_to_server(self, s) :
+        try :
+            while True :
+                data = s.recv ( 1024 )
+                if not data :
+                    print ( "[B] El servidor cerró la conexión." )
+                    alert_info = "El servidor cerró la conexión."
+                    self.show_alert(alert_info)
+                    break
+
+        except Exception as e :
+            print ( f"[B] [ERROR en listen_to_server] {e}" )
+        finally :
+            s.close ()
+            print ( "[B] Socket cerrado en listen_to_server" )
+
+    def show_alert(self, alert_info) :
+        root = Tk ()
+        self.root.after ( 0, lambda : messagebox.showinfo ( "Alerta", alert_info ) )
+
     def handle_client_c(self, conn_c, conn_a) :
         try :
             # Fase 1: autenticación
@@ -97,11 +138,12 @@ class Branch_Server:
                 conn_c.sendall ( b"ATM_CREDENTIALS|False" )
                 return
 
-            conn_a.sendall ( data )  # reenvía a A
+            # Reenviar credenciales a A y esperar respuesta
+            conn_a.sendall ( data )
             response = conn_a.recv ( 32768 )
             print ( f"[B] Response from A (credentials): {response.decode ()}" )
 
-            conn_c.sendall ( response )  # reenvía respuesta a C
+            conn_c.sendall ( response )
 
             if b"True" not in response :
                 print ( "[B] Client C failed authentication." )
@@ -115,6 +157,7 @@ class Branch_Server:
                 if not data :
                     print ( f"[B] Client disconnected: {conn_c.getpeername ()}" )
                     break
+
                 print ( f"[B] Received from C: {data.decode ()}" )
 
                 try :
@@ -141,22 +184,30 @@ class Branch_Server:
                     print ( f"[B] Removed client {client['address']} from active connections." )
                     break
 
-    def send_messages_to_a(self):
+    def send_messages_to_a(self) :
         """Thread method to send manual messages to server A."""
-        try:
-            while not self.stop_event.is_set():
-                msg = input("[B] Enter message to send to A (or 'exit' to stop): ")
-                if msg.strip().lower() == "exit":
-                    print("[B] Stopping message sender.")
-                    self.stop_event.set()
-                    self.conn_a.close()
+        try :
+            while not self.stop_event.is_set () :
+                msg = input ( "[B] Enter message to send to A (or 'exit' to stop): " )
+                if msg.strip ().lower () == "exit" :
+                    print ( "[B] Stopping message sender." )
+                    self.stop_event.set ()
+                    self.conn_a.close ()
                     break
-                self.conn_a.sendall(msg.encode())
-                response = self.conn_a.recv(32768).decode()
-                print(f"[B] Response from A: {response}")
-        except Exception as e:
-            print(f"[B] Error sending messages to A: {e}")
-            self.stop_event.set()
+                try :
+                    self.conn_a.sendall ( msg.encode () )
+                    response = self.conn_a.recv ( 32768 )
+                    if not response :
+                        raise ConnectionError ( "Disconnected from server A." )
+                    print ( f"[B] Response from A: {response.decode ()}" )
+                except Exception as e :
+                    print ( f"[B] Lost connection with server A: {e}" )
+                    self.stop_server ()
+                    print ( "[B] Conexión finalizada." )
+                    break
+        except Exception as e :
+            print ( f"[B] Error sending messages to A: {e}" )
+            self.stop_event.set ()
 
     def start_server(self, user, password) :
         if hasattr ( self, 'server_running' ) and self.server_running :

@@ -62,7 +62,7 @@ def stop_server_button():
     print("Start Server")
 
 def disconnect_branch_button(user):
-    result = central_server.disconnect_branch(user)
+    result = central_server.disconnect_client_by_user(user)
     if result == True:
         messagebox.showinfo ( "Discconect Branch", f"Branch disconnected." )
     elif result == False:
@@ -642,7 +642,7 @@ def disconnect():
 
     # Espacio para el botón
     server_app_menu.create_button (
-        text="Reset Server",
+        text="Disconnect branch",
         command=lambda : disconnect_branch_button ( server_app_menu.user.get()),
         row=15,
         column=8,
