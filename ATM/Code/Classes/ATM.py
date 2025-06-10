@@ -21,10 +21,21 @@ class ATM:
             self.conn_b.connect ( (self.ip_branch, self.port_branch) )
             print ( "[ATM] Conectado con Branch Server (B)" )
 
+            # Esperar mensaje de solicitud de credenciales
+            request = self.conn_b.recv ( 1024 ).decode ()
+            print ( f"[ATM] Mensaje recibido de B: {request.strip ()}" )
+
+            if "Authentication required" not in request :
+                print ( "[ATM] No se recibió solicitud de autenticación. Cancelando." )
+                return False
+
+            # Enviar credenciales
+            #credentials_msg = f"ATM_CREDENTIALS|{user}|{password}"
             credentials_msg = f"ATM_CREDENTIALS|{user}|{password}"
             self.conn_b.sendall ( credentials_msg.encode () )
             print ( f"[ATM] Credenciales enviadas: {credentials_msg}" )
 
+            # Esperar respuesta
             response = self.conn_b.recv ( 1024 ).decode ()
             print ( f"[ATM] Respuesta de B: {response}" )
 
@@ -92,9 +103,17 @@ class ATM:
 
 
 if __name__ == "__main__":
-    # IP y puerto de Branch Server (B) quemados para pruebas
-    ip_b = "127.0.0.1"
+    ip_b = '192.168.0.253'
     port_b = 11000
 
+    user = "admin"
+    password = "admin"
+
     atm = ATM(ip_b, port_b)
-    atm.start()
+    autenticado = atm.start(user, password)
+
+    if autenticado:
+        print("Inicio exitoso, usuario autenticado.")
+        # Aquí puedes llamar otros métodos como atm.check_balance(user), etc.
+    else:
+        print("Error de autenticación.")

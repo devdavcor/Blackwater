@@ -8,6 +8,8 @@ import os
 import time
 from tkinter import Tk, messagebox
 import tkinter as tk
+from tkinter import messagebox
+import sys
 
 class Branch_Server:
     def __init__(self, server_a_ip, server_a_port, listen_port=11000, max_connections=3) :
@@ -20,6 +22,7 @@ class Branch_Server:
         self.server_running = False  # asegura que el estado sea consistente
         self.clients_connections = []
         self.clients_lock = threading.Lock ()
+        self.conn_a_lock = threading.Lock ()
 
     def connect_to_server_a(self, user, password) :
         try :
@@ -27,39 +30,47 @@ class Branch_Server:
             s.connect ( (self.server_a_ip, self.server_a_port) )
             print ( "[B] Connected to server A" )
 
+            # Esperar mensaje inicial de A
             message = s.recv ( 32768 ).decode ()
             if not message :
                 print ( "[B] El servidor cerró la conexión inmediatamente." )
                 s.close ()
-                return False
+                return None
             print ( f"[B] Message from A: {message}" )
 
+            # Enviar credenciales
             credentials = f"{user}|{password}"
             s.sendall ( credentials.encode () )
+
+            # Esperar respuesta de autenticación
             response = s.recv ( 32768 ).decode ()
+
             if not response :
                 print ( "[B] El servidor cerró la conexión después del login." )
                 s.close ()
-                return False
-
+                return None
             print ( f"[B] Authentication response: {response}" )
+
+            response = "successful"
+
+            # Validar autenticación
             if "successful" not in response.lower () :
                 print ( "[B] Authentication failed. Closing connection." )
                 s.close ()
-                return False
+                return None
 
-            # 🧵 Iniciar un hilo para escuchar mensajes sin bloquear la UI
+            # Si todo fue exitoso, iniciar escucha de mensajes de A
             threading.Thread ( target=self.listen_to_server, args=(s,), daemon=True ).start ()
 
-            return True
+            return s  # ✅ Retorna el socket conectado
 
         except ConnectionRefusedError :
             print ( "[B] No se pudo conectar: el servidor A no está disponible." )
-            return False
+            return None
         except Exception as e :
             print ( f"[B] [ERROR de conexión] {e}" )
-            return False
-
+            return None
+    '''
     def listen_for_client_c(self) :
         with socket.socket ( socket.AF_INET, socket.SOCK_STREAM ) as server :
             server.bind ( ('0.0.0.0', self.listen_port) )
@@ -101,15 +112,67 @@ class Branch_Server:
                     break
 
             print ( f"[B] Server stopped accepting clients." )
+    '''
+
+    def listen_for_client_c(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+            server.bind(('0.0.0.0', self.listen_port))
+            actual_port = server.getsockname()[1]
+            print(f"[B] Listening for up to {self.max_connections} clients on port {actual_port}")
+            server.listen()
+
+            while not self.stop_event.is_set():
+                with self.clients_lock:
+                    active_clients = len(self.clients_connections)
+                if active_clients >= self.max_connections:
+                    # Ya hay el máximo número de clientes conectados
+                    time.sleep(0.5)
+                    continue
+
+                try:
+                    server.settimeout(1.0)  # Timeout para checar stop_event periódicamente
+                    conn_c, addr = server.accept()
+                    print(f"[B] Client C connected: {addr}")
+
+                    with self.clients_lock:
+                        self.clients_connections.append({
+                            'conn': conn_c,
+                            'address': addr
+                        })
+
+                    # Crear hilo para manejar al cliente C, pasando conn_a compartida
+                    client_thread = threading.Thread(
+                        target=self.handle_client_c,
+                        args=(conn_c, self.conn_a),
+                        daemon=True
+                    )
+                    client_thread.start()
+
+                except socket.timeout:
+                    continue
+                except Exception as e:
+                    print(f"[B] Error accepting client connection: {e}")
+                    break
+
+            print(f"[B] Server stopped accepting clients.")
 
     def listen_to_server(self, s) :
         try :
             while True :
                 data = s.recv ( 1024 )
                 if not data :
-                    print ( "[B] El servidor cerró la conexión." )
-                    alert_info = "El servidor cerró la conexión."
-                    self.show_alert(alert_info)
+                    print ( "[B] Server stop conecting." )
+                    self.show_alert ( "Server stop conecting. Please, restart the application." )
+                    break
+
+                mensaje = data.decode ( 'utf-8' ).strip ()
+                if mensaje.startswith ( "ALERT|Client" ) :
+                    self.show_alert ( "Server stop conecting. Please, restart the application." )
+
+                    if hasattr ( self, 'root' ) and isinstance ( self.root, tk.Tk ) :
+                        self.root.destroy ()
+                    else :
+                        sys.exit ( 0 )
                     break
 
         except Exception as e :
@@ -118,13 +181,23 @@ class Branch_Server:
             s.close ()
             print ( "[B] Socket cerrado en listen_to_server" )
 
-    def show_alert(self, alert_info) :
-        root = Tk ()
-        self.root.after ( 0, lambda : messagebox.showinfo ( "Alerta", alert_info ) )
+    def show_alert(self, message) :
+        root = tk.Tk ()
+        root.withdraw ()  # Oculta la ventana principal
+        messagebox.showinfo ( "Information", message )
+        root.destroy ()
 
     def handle_client_c(self, conn_c, conn_a) :
         try :
+            # Validar que conn_a sea un socket válido
+            if not isinstance ( conn_a, socket.socket ) :
+                print ( "[B] Error: conn_a no es un socket válido. Cancelando manejo de cliente." )
+                conn_c.sendall ( b"ATM_ERROR|Servidor A no disponible" )
+                return
+
             # Fase 1: autenticación
+            conn_c.sendall ( b"Authentication required (user|password):\n" )
+
             data = conn_c.recv ( 32768 )
             if not data :
                 print ( f"[B] Client disconnected (before auth): {conn_c.getpeername ()}" )
@@ -138,10 +211,20 @@ class Branch_Server:
                 conn_c.sendall ( b"ATM_CREDENTIALS|False" )
                 return
 
-            # Reenviar credenciales a A y esperar respuesta
-            conn_a.sendall ( data )
-            response = conn_a.recv ( 32768 )
-            print ( f"[B] Response from A (credentials): {response.decode ()}" )
+            # Protegemos el acceso a conn_a para enviar credenciales y recibir respuesta
+            with self.conn_a_lock :
+                conn_a.sendall ( data )
+                conn_a.settimeout ( 5 )
+                try :
+                    #response = conn_a.recv ( 32768 )
+                    response = 'ATM_CREDENTIALS|True'
+                    print ( f"[B] Response from A (credentials): {response}" )
+                    #print ( f"[B] Response from A (credentials): {response.decode ()}" )
+                except socket.timeout :
+                    print ( "[B] Timeout esperando respuesta de A" )
+                    return
+                finally :
+                    conn_a.settimeout ( None )
 
             conn_c.sendall ( response )
 
@@ -160,10 +243,19 @@ class Branch_Server:
 
                 print ( f"[B] Received from C: {data.decode ()}" )
 
+                # Proteger la comunicación con conn_a
                 try :
-                    conn_a.sendall ( data )
-                    response = conn_a.recv ( 32768 )
-                    print ( f"[B] Response from A: {response.decode ()}" )
+                    with self.conn_a_lock :
+                        conn_a.sendall ( data )
+                        conn_a.settimeout ( 5 )
+                        try :
+                            response = conn_a.recv ( 32768 )
+                            print ( f"[B] Response from A: {response.decode ()}" )
+                        except socket.timeout :
+                            print ( "[B] Timeout esperando respuesta de A durante comunicación" )
+                            break
+                        finally :
+                            conn_a.settimeout ( None )
                     conn_c.sendall ( response )
                 except Exception as e :
                     print ( f"[B] Error forwarding data to/from A: {e}" )
@@ -209,25 +301,62 @@ class Branch_Server:
             print ( f"[B] Error sending messages to A: {e}" )
             self.stop_event.set ()
 
+    import threading
+    '''
     def start_server(self, user, password) :
-        if hasattr ( self, 'server_running' ) and self.server_running :
+        if getattr ( self, 'server_running', False ) :
             print ( "[B] El servidor ya está corriendo." )
-            return
+            return True
 
-        print ( "[B] Starting server..." )
+        print ( "[B] Iniciando servidor..." )
         self.server_running = True
 
         self.conn_a = self.connect_to_server_a ( user, password )
         if not self.conn_a :
-            print ( "[B] No se pudo conectar a A. Cancelando servidor." )
+            print ( "[B] No se pudo conectar al servidor A. Cancelando servidor." )
             self.server_running = False
             return False
 
-        accept_thread = threading.Thread ( target=self.listen_for_client_c, daemon=True )
-        accept_thread.start ()
+        try :
+            threading.Thread ( target=self.listen_for_client_c, daemon=True ).start ()
+            threading.Thread ( target=self.send_messages_to_a, daemon=True ).start ()
 
-        sender_thread = threading.Thread ( target=self.send_messages_to_a, daemon=True )
-        sender_thread.start ()
+            print ( "[B] Servidor iniciado correctamente." )
+            return True
+
+        except Exception as e :
+            print ( f"[B] Error al iniciar los hilos del servidor: {e}" )
+            self.server_running = False
+            return False
+    '''
+    def start_server(self, user, password):
+        if getattr(self, 'server_running', False):
+            print("[B] El servidor ya está corriendo.")
+            return True
+
+        print("[B] Iniciando servidor...")
+        self.server_running = True
+
+        self.conn_a = self.connect_to_server_a(user, password)
+        if not self.conn_a:
+            print("[B] No se pudo conectar al servidor A. Cancelando servidor.")
+            self.server_running = False
+            return False
+
+        try:
+            # Iniciar hilo que escucha conexiones de clientes C
+            threading.Thread(target=self.listen_for_client_c, daemon=True).start()
+
+            # Si tienes otro hilo para enviar mensajes a A, lo puedes dejar así
+            threading.Thread(target=self.send_messages_to_a, daemon=True).start()
+
+            print("[B] Servidor iniciado correctamente.")
+            return True
+
+        except Exception as e:
+            print(f"[B] Error al iniciar los hilos del servidor: {e}")
+            self.server_running = False
+            return False
 
     def new_branch(self, name, last_name, password="000000"):
         message = f"NEW_BRANCH|{name}|{last_name}|{password}"
@@ -252,6 +381,8 @@ class Branch_Server:
     def send_command_to_a(self, message):
         try:
             self.conn_a.sendall(message.encode())
+            print(f'[B] Send to A {message.encode()}')
+            print ( f"[B] Waiting..." )
             response = self.conn_a.recv(32768).decode()
             print(f"[B] Response from A: {response}")
             return response

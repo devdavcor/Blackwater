@@ -21,6 +21,8 @@ def try_login():
     global central_server  # Aquí le dices que usarás la variable global
     admin = server_app.user.get()
     password = server_app.password.get()
+    central_server = Central_Server ()  # Crear la instancia aquí
+
     result = login_instance.start_login(admin, password)
 
     if result:
@@ -47,13 +49,40 @@ def start_server_button():
         messagebox.showinfo ( "Start Server", f"Sever is running." )
     print("Start Server")
 
+
+
+from tkinter import messagebox
+
+from tkinter import messagebox
+
 def restart_server_button(port, branches):
-    result = central_server.settings_server(int(port), int(branches))
-    if result == False:
-        messagebox.showinfo ( "Restart Server", f"Sever is already running." )
-    elif result == True:
-        messagebox.showinfo ( "Restart Server", f"Sever is running." )
+    try:
+        port_int = int(port)
+    except ValueError:
+        messagebox.showerror("Error", "Port must be an integer between 1 and 65535.")
+        return
+
+    try:
+        branches_int = int(branches)
+    except ValueError:
+        messagebox.showerror("Error", "Branches allowed must be an integer.")
+        return
+
+    if not (1 <= port_int <= 65535):
+        messagebox.showerror("Error", "Port must be between 1 and 65535.")
+        return
+
+    result = central_server.settings_server(port_int, branches_int)
+
+    if result is False:
+        messagebox.showinfo("Restart Server", "Server is not started correctly. Port could not be correct. Try Again.")
+    elif result is True:
+        messagebox.showinfo("Restart Server", "Server is running.")
+
     print("Start Server")
+
+
+
 
 def stop_server_button():
     result = central_server.stop_server()
@@ -250,7 +279,7 @@ def settings():
     # Espacio para el botón
     server_app_menu.create_button(
         text="Reset Server",
-        command=lambda: restart_server_button(int(server_app_menu.port.get()), int(server_app_menu.branches.get())),
+        command=lambda: restart_server_button(server_app_menu.port.get(), server_app_menu.branches.get()),
         row=15,
         column=8,
         columnspan=4,

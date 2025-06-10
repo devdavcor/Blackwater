@@ -71,23 +71,30 @@ class Central_Server:
 
     # Función para validar credenciales
     def validate_credentials(self, user_input, password_input) :
-        print('Validando credenciales...')
+        print ( 'Validating credentials...' )
         try :
             with self.clients_lock :
+                print ( 'Connected users:', self.connected_users )
                 if user_input in self.connected_users :
-                    print(f"USER: {user_input} | PASSWORD: {password_input}")
                     print ( f"[ERROR] User already connected: {user_input}" )
                     return False  # Usuario ya está conectado
 
+            # Validar credenciales en el DataFrame
             matched = self.users_df[
                 (self.users_df['user'] == user_input) &
                 (self.users_df['password'] == password_input)
                 ]
+
             print ( f"USER: {user_input} | PASSWORD: {password_input}" )
-            print ( f"[ERROR] User already connected: {user_input}" )
-            return not matched.empty
+            if matched.empty :
+                print ( "[ERROR] Incorrect credentials." )
+                return False
+            else :
+                print ( "[OK]." )
+                return True
+
         except Exception as e :
-            print ( f"[ERROR] Validating credentials: {e}" )
+            print ( f"[ERROR] in function: {e}" )
             return False
 
     def handle_client(self, conn, addr) :
@@ -110,11 +117,6 @@ class Central_Server:
                 return False
 
             with self.clients_lock :
-                # Verifica que el usuario no esté ya conectado (si no lo haces en validate_credentials)
-                if user_input in self.connected_users :
-                    conn.sendall ( b"[ERROR] User already connected. Disconnecting.\n" )
-                    return False
-
                 self.connected_users.add ( user_input )
                 self.clients_connections.append ( (conn, addr, user_input) )
 
@@ -263,6 +265,7 @@ class Central_Server:
                     response = f"[ERROR] Processing command: {cmd_err}"
 
                 conn.sendall ( response.encode () )
+                print(f"SEND {response}")
 
         except Exception as e :
             print ( f"[ERROR] With client {addr}: {e}" )
@@ -271,6 +274,7 @@ class Central_Server:
             with self.clients_lock :
                 if user_input in self.connected_users :
                     self.connected_users.remove ( user_input )
+                    print('Cerrado')
                 # Eliminar la conexión con el usuario correspondiente
                 self.clients_connections = [
                     (c, a, u) for (c, a, u) in self.clients_connections if u != user_input
@@ -278,6 +282,7 @@ class Central_Server:
                 self.clients_active -= 1
             conn.close ()
             print ( f"[-] Client {addr} disconnected" )
+
 
     # Método para aceptar y validar conexiones
     def accept_connections(self) :
@@ -312,6 +317,16 @@ class Central_Server:
             return False
 
         print ( "Starting server..." )
+
+        try :
+            self.server_socket = socket.socket ( socket.AF_INET, socket.SOCK_STREAM )
+            self.server_socket.bind ( (self.host, self.port) )  # Aquí puede fallar
+            self.server_socket.listen ( self.max_clients )
+        except Exception as e :
+            print ( f"Error al iniciar el servidor: {e}" )
+            self.server_running = False
+            return False
+
         self.server_running = True
         accept_thread = threading.Thread ( target=self.accept_connections, daemon=True )
         accept_thread.start ()
@@ -337,15 +352,34 @@ class Central_Server:
         return True
 
     # Método para reiniciar el servidor con nuevas configuraciones
-    def settings_server(self, new_port=None, new_max_clients=None):
-        print("Restarting server with new settings...")
-        self.stop_server()
-        if new_port:
-            self.port = new_port
-        if new_max_clients:
-            self.max_clients = new_max_clients
-        self.start_server()
-        return True
+    def settings_server(self, new_port=None, new_max_clients=None) :
+        print ( "Restarting server with new settings..." )
+        self.stop_server ()
+
+        # Validación del puerto
+        if new_port is not None :
+            if isinstance ( new_port, int ) and 0 <= new_port <= 65535 :
+                self.port = new_port
+            else :
+                print (
+                    f"[ERROR] Invalid port: {new_port}. Must be an integer between 0 and 65535. Server not started." )
+                return False
+
+        # Validación de número máximo de clientes
+        if new_max_clients is not None :
+            if isinstance ( new_max_clients, int ) and new_max_clients > 0 :
+                self.max_clients = new_max_clients
+            else :
+                print (
+                    f"[ERROR] Invalid max clients: {new_max_clients}. Must be a positive integer. Server not started." )
+                return False
+
+        success = self.start_server ()
+        if success :
+            print ( "Server restarted successfully." )
+        else :
+            print ( "Failed to restart server." )
+        return success
 
     # Método para desconectar clientes manualmente por dirección
     def disconnect_client(self, addr):
@@ -371,7 +405,7 @@ class Central_Server:
                 if u == user :
                     try :
                         # Enviar mensaje previo a la desconexión
-                        conn.sendall ( b"Disconnected by server.\n" )
+                        conn.sendall ( f"ALERT|Client {user} disconnected manually.\n" )
                         conn.shutdown ( socket.SHUT_RDWR )  # Recomendado antes de cerrar
                         conn.close ()
                         print ( f"ALERT|Client {user} disconnected manually." )
