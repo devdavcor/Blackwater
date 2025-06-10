@@ -56,7 +56,7 @@ def main():
                     # Mostrar el estado en pantalla
                     x = int(hand_landmarks.landmark[mp_hands.HandLandmark.WRIST].x * frame.shape[1])
                     y = int(hand_landmarks.landmark[mp_hands.HandLandmark.WRIST].y * frame.shape[0]) - 20
-                    cv2.putText(frame, f"Mano {estado_mano}", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+                    #cv2.putText(frame, f"Mano {estado_mano}", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
 
             cv2.imshow("Detección de manos", frame)
 
