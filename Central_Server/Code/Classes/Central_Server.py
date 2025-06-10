@@ -177,6 +177,12 @@ class Central_Server:
                         result = change_password ( user_code, new_password )
                         response = f"CHANGE_PASSWORD|{user_code}|{result}"
 
+                    elif command == "ATM_CREDENTIALS" and len ( parts ) == 3 :
+                        user_code = parts[1].strip ()
+                        password = parts[2].strip ()
+                        result = atm_validate_credentials(user_code, password)
+                        response = f"ATM_CREDENTIALS|{result}"
+
                     elif command == "WITHDRAW_CASH" and len ( parts ) == 3 :
                         user_code = parts[1].strip ()
                         amount = float ( parts[2].strip () )

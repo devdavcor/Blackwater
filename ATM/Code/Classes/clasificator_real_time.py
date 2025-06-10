@@ -4,7 +4,7 @@ import numpy as np
 import math
 import time
 
-vectors_path = r"C:\Users\devdavcor\Documents\Blackwater\ATM\Code\Classes\average_vectors.npy"
+vectors_path = r"/Users/erickcorona/Documents/Blackwater/ATM/Code/Classes/average_vectors.npy"
 class_labels = ["AFS", "ANS", "DIS", "HAS", "NES", "SAS", "SUS"]
 
 all_vectors = np.load(vectors_path)

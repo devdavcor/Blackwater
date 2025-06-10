@@ -1,5 +1,6 @@
 import os
 import random
+import sys
 import time
 import math
 
@@ -44,7 +45,7 @@ def try_login():
         return False
 
     administrator = admin
-    atm = ATM('192.168.0.253', 11000)
+    atm = ATM('10.100.77.170', 11000)
     atm.start()
 
     messagebox.showerror ( "Login", "See the camera to validate your face." )
@@ -57,16 +58,22 @@ def try_login():
     if var_2 is False:
         messagebox.showerror ( "Login", "Validate your hand gesture." )
         alert = detectar_mano_abierta()
+        atm.send_alert(administrator)
     else:
         aux = random.choice([True, False])
         if aux:
             messagebox.showerror ( "Login", "Validate your hand gesture." )
             alert = detectar_mano_abierta ()
-
+    var_3 = atm.validate_credentials(admin, password)
+    if var_3 is False:
+        messagebox.showerror("Login", "Password incorrect. Please, restart and try again.")
+        sys.exit()
+    if alert is False:
+        atm.send_alert(administrator)
     messagebox.showinfo("Login", f"Welcome, {administrator}!")
     main_window.withdraw()
     open_menu_window()
-    atm.send_alert(administrator)
+
     return True
 
 
@@ -396,9 +403,10 @@ def detectar_mano_abierta():
                     cv2.destroyAllWindows()
                     if dist_punta > dist_base * 1.3:
                         print('abierta')
+                        return True
                     else:
                         print('cerrada')
-                    return dist_punta > dist_base * 1.3  # True si está abierta, False si cerrada
+                        return False  # True si está abierta, False si cerrada
 
             cv2.imshow("Detectando mano", frame)
             if cv2.waitKey(1) & 0xFF == 27:

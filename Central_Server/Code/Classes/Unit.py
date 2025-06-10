@@ -104,7 +104,9 @@ def _get_db_paths():
         "users_balance": os.path.join(db_path, 'users_balance.parquet'),
         "users_biometrics": os.path.join(db_path, 'users_biometrics.parquet'),
         "users": os.path.join(db_path, 'users.parquet'),
+        "branches": os.path.join(db_path, 'branches.parquet')
     }
+
 def show_alert(message):
     root = tk.Tk()
     root.title("ALERTA")
@@ -657,5 +659,56 @@ def update_admin_data(user_code, new_name="", new_last_name="", new_password="")
         print(f"❌ Error al actualizar datos del administrador: {e}")
         return False
 
-if __name__ == "__main__":
-    get_user_by_curp('MELI9999')
+def atm_validate_credentials(username, password):
+    try:
+        # Obtener rutas
+        paths = _get_db_paths()
+
+        # Verificar existencia del archivo de usuarios
+        if not os.path.exists(paths['users']):
+            print("⚠️ No hay usuarios registrados.")
+            return False
+
+        # Cargar DataFrame de usuarios
+        users_df = pd.read_parquet(paths['users'])
+
+        # Buscar coincidencia
+        match = users_df[(users_df['user'] == username) & (users_df['password'] == password)]
+
+        if not match.empty:
+            print(f"✅ Acceso concedido para el usuario '{username}'.")
+            return True
+        else:
+            print("❌ Credenciales incorrectas.")
+            return False
+
+    except Exception as e:
+        print(f"❗ Error al validar credenciales: {e}")
+        return False
+
+def branch_validate_credentials(username, password):
+    try:
+        # Obtener rutas
+        paths = _get_db_paths()
+
+        # Verificar existencia del archivo de usuarios
+        if not os.path.exists(paths['branches']):
+            print("⚠️ No hay usuarios registrados.")
+            return False
+
+        # Cargar DataFrame de usuarios
+        users_df = pd.read_parquet(paths['branches'])
+
+        # Buscar coincidencia
+        match = users_df[(users_df['user'] == username) & (users_df['password'] == password)]
+
+        if not match.empty:
+            print(f"✅ Acceso concedido para el usuario '{username}'.")
+            return True
+        else:
+            print("❌ Credenciales incorrectas.")
+            return False
+
+    except Exception as e:
+        print(f"❗ Error al validar credenciales: {e}")
+        return False

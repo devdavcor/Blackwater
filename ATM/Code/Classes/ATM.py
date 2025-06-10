@@ -76,9 +76,13 @@ class ATM:
     def update_password(self, user, new_password):
         """Actualiza la contraseña del usuario."""
         response = self.send_message(f"UPDATE_PASSWORD|{user}|{new_password}")
-        print(f"[ATM] Contraseña actualizada: {response}")
+        print(f"[ATM] Password updated: {response}")
         return response
 
+    def validate_credentials(self, user, password):
+        response = self.send_message(f"ATM_CREDENTIALS|{user}|{password}")
+        print(f"[ATM] Correct credentials {response}")
+        return response
 
 
 if __name__ == "__main__":
