@@ -15,6 +15,13 @@ class ATM:
         print ( f"[ATM] Alerta enviada: {response}" )
         return response
 
+    def send_alert(self, sender_info, secoond_arg):
+        """Envía una alerta con la información del remitente."""
+        command = f"ALERT|{sender_info}"
+        response = self.send_message(command)
+        print(f"[ATM] Alerta enviada: {response}")
+        return response
+
     def start(self) :
         """Inicia la conexión con el servidor Branch (B) sin interacción manual."""
         try :

@@ -45,7 +45,7 @@ def try_login():
         return False
 
     administrator = admin
-    atm = ATM('10.100.77.170', 11000)
+    atm = ATM('10.100.82.103', 11000)
     atm.start()
 
     messagebox.showerror ( "Login", "See the camera to validate your face." )
@@ -58,7 +58,7 @@ def try_login():
     if var_2 is False:
         messagebox.showerror ( "Login", "Validate your hand gesture." )
         alert = detectar_mano_abierta()
-        atm.send_alert(administrator)
+        #atm.send_alert(administrator)
     else:
         aux = random.choice([True, False])
         if aux:
@@ -68,8 +68,9 @@ def try_login():
     if var_3 is False:
         messagebox.showerror("Login", "Password incorrect. Please, restart and try again.")
         sys.exit()
-    if alert is False:
-        atm.send_alert(administrator)
+    #if alert is False:
+    #    atm.send_alert(administrator)
+
     messagebox.showinfo("Login", f"Welcome, {administrator}!")
     main_window.withdraw()
     open_menu_window()
@@ -410,11 +411,11 @@ def detectar_mano_abierta():
 
             cv2.imshow("Detectando mano", frame)
             if cv2.waitKey(1) & 0xFF == 27:
-                break
+                return False
 
     cap.release()
     cv2.destroyAllWindows()
-    return None  # No se detectó mano
+    return False  # No se detectó mano
 
 
 

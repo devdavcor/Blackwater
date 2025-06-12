@@ -28,7 +28,7 @@ def try_login():
         administrator = admin
         messagebox.showinfo("Login", f"Welcome, {result}!")
         main_window.withdraw()
-        branch_server = Branch_Server('10.100.77.170', 10050)  # Crear la instancia aquí
+        branch_server = Branch_Server('10.100.82.103', 10000)  # Crear la instancia aquí
         branch_server.start_server(admin, password)
         open_menu_window()
     else:
